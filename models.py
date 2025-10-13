@@ -1,36 +1,43 @@
-from flask_sqlalchemy import SQLAlchemy
+from mongoengine import Document, StringField, DateTimeField, ReferenceField, ListField, IntField
 from datetime import datetime
+import mongoengine as me
 
-db = SQLAlchemy()
 
+class Thread(Document): #perguntas
+    title = StringField(max_length=200, required=True)
+    description = StringField(max_length=500)  # Optional description field
 
-class Thread(db.Model):
-    __tablename__ = 'threads'
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    posts = db.relationship('Post', backref='thread', cascade='all, delete-orphan')
+    created_at = DateTimeField(default=datetime.utcnow)
+    
+    meta = {
+        'collection': 'threads',
+        'ordering': ['-created_at']
+    }
 
     def to_dict(self):
         return {
-            'id': self.id,
+            'id': str(self.id),
             'title': self.title,
+            'description': self.description,
             'created_at': self.created_at.isoformat(),
         }
 
 
-class Post(db.Model):
-    __tablename__ = 'posts'
-    id = db.Column(db.Integer, primary_key=True)
-    thread_id = db.Column(db.Integer, db.ForeignKey('threads.id'), nullable=False)
-    author = db.Column(db.String(100), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+class Post(Document): #respostas
+    thread = ReferenceField(Thread, required=True)
+    author = StringField(max_length=100, required=True, default='Anonymous')
+    content = StringField(required=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+    
+    meta = {
+        'collection': 'posts',
+        'ordering': ['created_at']
+    }
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'thread_id': self.thread_id,
+            'id': str(self.id),
+            'thread_id': str(self.thread.id),
             'author': self.author,
             'content': self.content,
             'created_at': self.created_at.isoformat(),
