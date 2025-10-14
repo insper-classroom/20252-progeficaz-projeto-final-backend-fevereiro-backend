@@ -68,7 +68,7 @@ def list_threads():
         query['subjects__in'] = subjects
     
     threads = Thread.objects(**query).order_by('-created_at')
-    return jsonify([t.to_dict() for t in threads])
+    return jsonify([t.to_dict(include_filters=True) for t in threads])
 
 
 @api_bp.route('/threads', methods=['POST'])
@@ -101,7 +101,7 @@ def create_thread():
             subjects=subjects
         )
         thread.save()
-        return jsonify(thread.to_dict()), 201
+        return jsonify(thread.to_dict(include_filters=True)), 201
     except ValidationError as e:
         return jsonify({'error': str(e)}), 400
 
@@ -109,14 +109,34 @@ def create_thread():
 @api_bp.route('/threads/<thread_id>', methods=['GET'])
 def get_thread(thread_id):
     try:
+        # Debug logging
+        print(f"DEBUG: Attempting to get thread with ID: {thread_id}")
+        
+        # Validate ObjectId format
+        if not thread_id or len(thread_id) != 24:
+            print(f"DEBUG: Invalid thread_id format: {thread_id}")
+            return jsonify({'error': 'Invalid thread ID format'}), 400
+        
+        # Try to get the thread
         thread = Thread.objects.get(id=thread_id)
+        print(f"DEBUG: Found thread: {thread.title}")
+        
         posts = Post.objects(thread=thread).order_by('created_at')
-        data = thread.to_dict()
+        print(f"DEBUG: Found {len(posts)} posts for thread")
+        
+        data = thread.to_dict(include_filters=True)
         data['posts'] = [p.to_dict() for p in posts]
+        
         return jsonify(data)
+        
     except DoesNotExist:
+        print(f"DEBUG: Thread not found with ID: {thread_id}")
         return jsonify({'error': 'Thread not found'}), 404
+    except ValidationError as e:
+        print(f"DEBUG: Validation error: {str(e)}")
+        return jsonify({'error': 'Invalid thread ID'}), 400
     except Exception as e:
+        print(f"DEBUG: Unexpected error: {str(e)} (type: {type(e)})")
         return jsonify({'error': 'Invalid thread ID'}), 400
 
 
@@ -146,7 +166,7 @@ def update_thread(thread_id):
             thread.subjects = data['subjects']
         
         thread.save()
-        return jsonify(thread.to_dict())
+        return jsonify(thread.to_dict(include_filters=True))
     except DoesNotExist:
         return jsonify({'error': 'Thread not found'}), 404
     except ValidationError as e:
