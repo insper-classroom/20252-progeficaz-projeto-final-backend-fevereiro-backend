@@ -1,133 +1,63 @@
 from mongoengine import Document, StringField, DateTimeField, ReferenceField, ListField, IntField
 from datetime import datetime
 import mongoengine as me
+import pytz
+
+# Brasília timezone (GMT-3)
+BRASILIA_TZ = pytz.timezone('America/Sao_Paulo')
+
+def get_brasilia_now():
+    """Return current time in Brasília timezone converted to UTC for storage"""
+    # Get current time in Brasília
+    brasilia_time = datetime.now(BRASILIA_TZ)
+    # Convert to UTC for consistent storage
+    return brasilia_time.astimezone(pytz.UTC).replace(tzinfo=None)
+
+def utc_to_brasilia(utc_datetime):
+    """Convert UTC datetime to Brasília timezone"""
+    if utc_datetime is None:
+        return None
+    # Make UTC datetime timezone-aware
+    utc_aware = pytz.UTC.localize(utc_datetime)
+    # Convert to Brasília timezone
+    return utc_aware.astimezone(BRASILIA_TZ)
 
 
 class Thread(Document): #perguntas
     title = StringField(max_length=200, required=True)
     description = StringField(max_length=500)  # Optional description field
     
-    # Filter fields
-    semester = IntField(required=True, min_value=1, max_value=10)  # Required, single selection
-    courses = ListField(StringField(max_length=50))  # Optional, multiple selection
-    subjects = ListField(StringField(max_length=100), required=True)  # Required, multiple selection
+    # Filter fields (optional for backward compatibility)
+    semester = IntField(min_value=1, max_value=10, default=1)  # Default to 1st semester
+    courses = ListField(StringField(max_length=50), default=list)  # Default to empty list
+    subjects = ListField(StringField(max_length=100), default=lambda: ['Geral'])  # Default subject
 
-    created_at = DateTimeField(default=datetime.utcnow)
+    created_at = DateTimeField(default=get_brasilia_now)
     
     meta = {
         'collection': 'threads',
         'ordering': ['-created_at']
     }
 
-    def to_dict(self, include_filters=True, include_description=True, mode='full'):
-        """
-        Convert thread to dictionary with different display modes.
-        
-        Args:
-            include_filters (bool): Include filter information
-            include_description (bool): Include description field
-            mode (str): Display mode - 'list', 'list_with_filters', 'full', or 'detail'
-                - 'list': Minimal info for main page listing (no description, no filters)
-                - 'list_with_filters': Main page with hidden filter data (for filtering logic)
-                - 'full': Complete info including filters but condensed
-                - 'detail': Full detail view with all information
-        """
-        result = {
+    def to_dict(self):
+        # Convert UTC stored time to Brasília time for display
+        brasilia_time = utc_to_brasilia(self.created_at)
+        return {
             'id': str(self.id),
             'title': self.title,
-            'created_at': self.created_at.isoformat(),
+            'description': self.description,
+            'semester': self.semester,
+            'courses': self.courses,
+            'subjects': self.subjects,
+            'created_at': brasilia_time.isoformat() if brasilia_time else None,
         }
-        
-        # Mode-based inclusion of fields
-        if mode == 'list':
-            # Main page listing - minimal information only
-            return result
-        
-        elif mode == 'list_with_filters':
-            # Main page listing with hidden filter data for frontend filtering logic
-            result.update({
-                'semester': self.semester,
-                'courses': self.courses,
-                'subjects': self.subjects,
-                '_filters_hidden': True,  # Flag to indicate filters are for logic, not display
-                'filters': self._get_formatted_filters()
-            })
-            return result
-        
-        elif mode == 'full':
-            # Standard listing with filters but no description
-            if include_filters:
-                result.update({
-                    'semester': self.semester,
-                    'courses': self.courses,
-                    'subjects': self.subjects,
-                    'filters': self._get_formatted_filters()
-                })
-            return result
-        
-        else:  # mode == 'detail' or default
-            # Complete information for detail view
-            if include_description:
-                result['description'] = self.description
-            
-            if include_filters:
-                result.update({
-                    'semester': self.semester,
-                    'courses': self.courses,
-                    'subjects': self.subjects,
-                    'filters': self._get_formatted_filters()
-                })
-            
-            return result
-
-    def _get_formatted_filters(self):
-        """Get formatted filter information for display"""
-        try:
-            from filter_config import SEMESTERS, COURSES
-        except ImportError:
-            print("DEBUG: Could not import filter_config")
-            # Fallback without formatted names
-            return {
-                'semester': {
-                    'id': self.semester,
-                    'name': f"{self.semester}º Semestre"
-                },
-                'courses': [{'id': course_id, 'name': course_id} for course_id in (self.courses or [])],
-                'subjects': self.subjects or []
-            }
-        
-        formatted = {
-            'semester': {
-                'id': self.semester,
-                'name': f"{self.semester}º Semestre"
-            },
-            'courses': [],
-            'subjects': self.subjects or []
-        }
-        
-        # Format courses with names
-        if self.courses:
-            try:
-                course_dict = {c['id']: c['name'] for c in COURSES}
-                for course_id in self.courses:
-                    course_name = course_dict.get(course_id, course_id)
-                    formatted['courses'].append({
-                        'id': course_id,
-                        'name': course_name
-                    })
-            except Exception as e:
-                print(f"DEBUG: Error formatting courses: {e}")
-                # Fallback to IDs only
-                formatted['courses'] = [{'id': course_id, 'name': course_id} for course_id in self.courses]
-        
-        return formatted
 
 
 class Post(Document): #respostas
     thread = ReferenceField(Thread, required=True)
     author = StringField(max_length=100, required=True, default='Anonymous')
     content = StringField(required=True)
-    created_at = DateTimeField(default=datetime.utcnow)
+    created_at = DateTimeField(default=get_brasilia_now)
     
     meta = {
         'collection': 'posts',
@@ -135,10 +65,12 @@ class Post(Document): #respostas
     }
 
     def to_dict(self):
+        # Convert UTC stored time to Brasília time for display
+        brasilia_time = utc_to_brasilia(self.created_at)
         return {
             'id': str(self.id),
             'thread_id': str(self.thread.id),
             'author': self.author,
             'content': self.content,
-            'created_at': self.created_at.isoformat(),
+            'created_at': brasilia_time.isoformat() if brasilia_time else None,
         }
