@@ -19,27 +19,67 @@ class Thread(Document): #perguntas
         'ordering': ['-created_at']
     }
 
-    def to_dict(self, include_filters=True):
+    def to_dict(self, include_filters=True, include_description=True, mode='full'):
+        """
+        Convert thread to dictionary with different display modes.
+        
+        Args:
+            include_filters (bool): Include filter information
+            include_description (bool): Include description field
+            mode (str): Display mode - 'list', 'list_with_filters', 'full', or 'detail'
+                - 'list': Minimal info for main page listing (no description, no filters)
+                - 'list_with_filters': Main page with hidden filter data (for filtering logic)
+                - 'full': Complete info including filters but condensed
+                - 'detail': Full detail view with all information
+        """
         result = {
             'id': str(self.id),
             'title': self.title,
-            'description': self.description,
             'created_at': self.created_at.isoformat(),
         }
         
-        if include_filters:
-            # Include raw filter data
+        # Mode-based inclusion of fields
+        if mode == 'list':
+            # Main page listing - minimal information only
+            return result
+        
+        elif mode == 'list_with_filters':
+            # Main page listing with hidden filter data for frontend filtering logic
             result.update({
                 'semester': self.semester,
                 'courses': self.courses,
                 'subjects': self.subjects,
+                '_filters_hidden': True,  # Flag to indicate filters are for logic, not display
+                'filters': self._get_formatted_filters()
             })
-            
-            # Include formatted filter information for display
-            result['filters'] = self._get_formatted_filters()
+            return result
         
-        return result
-    
+        elif mode == 'full':
+            # Standard listing with filters but no description
+            if include_filters:
+                result.update({
+                    'semester': self.semester,
+                    'courses': self.courses,
+                    'subjects': self.subjects,
+                    'filters': self._get_formatted_filters()
+                })
+            return result
+        
+        else:  # mode == 'detail' or default
+            # Complete information for detail view
+            if include_description:
+                result['description'] = self.description
+            
+            if include_filters:
+                result.update({
+                    'semester': self.semester,
+                    'courses': self.courses,
+                    'subjects': self.subjects,
+                    'filters': self._get_formatted_filters()
+                })
+            
+            return result
+
     def _get_formatted_filters(self):
         """Get formatted filter information for display"""
         try:
