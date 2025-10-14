@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 import mongoengine as me
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure, ConfigurationError
-from models import Thread, Post
+from models import Thread, Post, get_brasilia_now, utc_to_brasilia
 
 
 def test_mongodb_connection(uri=None, timeout=10):
@@ -155,7 +155,8 @@ def test_database_operations(uri=None):
         me.connect(host=uri, serverSelectionTimeoutMS=10000)
         
         # Test CREATE
-        test_thread = Thread(title=f"Test Thread {datetime.now().isoformat()}")
+        brasilia_now = utc_to_brasilia(datetime.utcnow())
+        test_thread = Thread(title=f"Test Thread {brasilia_now.isoformat()}")
         test_thread.save()
         result['operations']['create'] = True
         
