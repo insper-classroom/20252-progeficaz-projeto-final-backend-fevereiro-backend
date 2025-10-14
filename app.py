@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import mongoengine as me
 from datetime import datetime
-from models import Thread, Post, get_brasilia_now
+from models import Thread, Post, get_brasilia_now, utc_to_brasilia
 from dotenv import load_dotenv
 import pytz
 
@@ -54,7 +54,7 @@ def create_app():
         conn_result = test_mongodb_connection()
         
         response = {
-            'timestamp': get_brasilia_now().isoformat(),
+            'timestamp': utc_to_brasilia(datetime.now(pytz.UTC).replace(tzinfo=None)).isoformat(),
             'connection': {
                 'status': 'connected' if conn_result['success'] else 'disconnected',
                 'type': conn_result['connection_type'],

@@ -7,8 +7,20 @@ import pytz
 BRASILIA_TZ = pytz.timezone('America/Sao_Paulo')
 
 def get_brasilia_now():
-    """Return current time in Brasília timezone"""
-    return datetime.now(BRASILIA_TZ)
+    """Return current time in Brasília timezone converted to UTC for storage"""
+    # Get current time in Brasília
+    brasilia_time = datetime.now(BRASILIA_TZ)
+    # Convert to UTC for consistent storage
+    return brasilia_time.astimezone(pytz.UTC).replace(tzinfo=None)
+
+def utc_to_brasilia(utc_datetime):
+    """Convert UTC datetime to Brasília timezone"""
+    if utc_datetime is None:
+        return None
+    # Make UTC datetime timezone-aware
+    utc_aware = pytz.UTC.localize(utc_datetime)
+    # Convert to Brasília timezone
+    return utc_aware.astimezone(BRASILIA_TZ)
 
 
 class Thread(Document): #perguntas
@@ -23,11 +35,13 @@ class Thread(Document): #perguntas
     }
 
     def to_dict(self):
+        # Convert UTC stored time to Brasília time for display
+        brasilia_time = utc_to_brasilia(self.created_at)
         return {
             'id': str(self.id),
             'title': self.title,
             'description': self.description,
-            'created_at': self.created_at.isoformat(),
+            'created_at': brasilia_time.isoformat() if brasilia_time else None,
         }
 
 
@@ -43,10 +57,12 @@ class Post(Document): #respostas
     }
 
     def to_dict(self):
+        # Convert UTC stored time to Brasília time for display
+        brasilia_time = utc_to_brasilia(self.created_at)
         return {
             'id': str(self.id),
             'thread_id': str(self.thread.id),
             'author': self.author,
             'content': self.content,
-            'created_at': self.created_at.isoformat(),
+            'created_at': brasilia_time.isoformat() if brasilia_time else None,
         }
