@@ -1,42 +1,11 @@
-from flask import Flask
-from flask_cors import CORS
-import os
-import mongoengine as me
-from datetime import datetime
-from models import Thread, Post, get_brasilia_now, utc_to_brasilia
-from dotenv import load_dotenv
 import pytz
+from api.threads.models import Thread
+from core.mongodb_connection_utils import test_mongodb_connection, test_database_operations
+from datetime import datetime
+from core.utils import utc_to_brasilia
+from core.types import api_response
 
-# Load environment variables
-load_dotenv()
-
-app = Flask(__name__)
-
-# MongoDB configuration
-mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/forum_db')
-    
-try:
-    me.connect(host=mongodb_uri)
-    print(f"Connected to MongoDB: {mongodb_uri}")
-except Exception as e:
-    print(f"Failed to connect to MongoDB: {e}")
-    print("Please ensure MongoDB is running or check your MONGODB_URI in .env file")
-    # You can choose to either exit or continue without DB connection
-    # For development, we'll continue and let the routes handle the errors
-    pass
-
-CORS(app)
-
-from routes import api_bp
-app.register_blueprint(api_bp, url_prefix='/api')
-
-@app.route('/')
-def index():
-    return {'message': 'working'}
-
-@app.route('/health')
-def health():
-    """Health check endpoint to verify DB connection"""
+def health() -> api_response:
     try:
         # Try to perform a simple operation to check DB connection
         Thread.objects().limit(1)
@@ -44,11 +13,7 @@ def health():
     except Exception as e:
         return {'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}, 503
 
-@app.route('/health/detailed')
-def detailed_health():
-    """Detailed health check with MongoDB connection test"""
-    from mongodb_connection_utils import test_mongodb_connection, test_database_operations
-    
+def detailed_health() -> api_response:
     # Test connection
     conn_result = test_mongodb_connection()
     
@@ -77,6 +42,3 @@ def detailed_health():
         status_code = 503
     
     return response, status_code
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,27 +1,6 @@
 from mongoengine import Document, StringField, DateTimeField, ReferenceField, ListField, IntField
-from datetime import datetime
 import mongoengine as me
-import pytz
-
-# Brasília timezone (GMT-3)
-BRASILIA_TZ = pytz.timezone('America/Sao_Paulo')
-
-def get_brasilia_now():
-    """Return current time in Brasília timezone converted to UTC for storage"""
-    # Get current time in Brasília
-    brasilia_time = datetime.now(BRASILIA_TZ)
-    # Convert to UTC for consistent storage
-    return brasilia_time.astimezone(pytz.UTC).replace(tzinfo=None)
-
-def utc_to_brasilia(utc_datetime):
-    """Convert UTC datetime to Brasília timezone"""
-    if utc_datetime is None:
-        return None
-    # Make UTC datetime timezone-aware
-    utc_aware = pytz.UTC.localize(utc_datetime)
-    # Convert to Brasília timezone
-    return utc_aware.astimezone(BRASILIA_TZ)
-
+from core.utils import get_brasilia_now, utc_to_brasilia
 
 class Thread(Document): #perguntas
     title = StringField(max_length=200, required=True)
@@ -40,6 +19,7 @@ class Thread(Document): #perguntas
     }
 
     def to_dict(self):
+        """Convert the Thread document to a dictionary."""
         # Convert UTC stored time to Brasília time for display
         brasilia_time = utc_to_brasilia(self.created_at)
         return {
@@ -65,6 +45,7 @@ class Post(Document): #respostas
     }
 
     def to_dict(self):
+        """Convert the Post document to a dictionary."""
         # Convert UTC stored time to Brasília time for display
         brasilia_time = utc_to_brasilia(self.created_at)
         return {
