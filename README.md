@@ -44,7 +44,7 @@ This is a minimal Flask REST API for the forum application. It uses MongoDB as t
 
 5. Run the app:
    ```bash
-   python app.py
+   python main.py
    ```
 
 The API will be available at http://localhost:5000/api
@@ -60,10 +60,15 @@ The API will be available at http://localhost:5000/api
   - Both fields are optional, only provided fields will be updated
 
 ### Posts
-- `POST /api/threads/<id>/posts` - create post `{author, content}`
 - `GET /api/posts/<id>` - get specific post  
+- `POST /api/threads/<id>/posts` - create post `{author, content}`
 - `PUT /api/posts/<id>` - update post `{author?, content?}`
   - Both fields are optional, only provided fields will be updated
+
+### Filter Options
+- `GET /api/filters/config' - get the complete filter configuration`
+- `GET /api/filters/<str:filter_type>' - get the filter configuration for a type`
+  - Available types = [semester, course, subject]
 
 ### Thread Model
 Threads now support an optional `description` field with the following structure:
@@ -72,6 +77,9 @@ Threads now support an optional `description` field with the following structure
   "id": "thread_id",
   "title": "thread_title",
   "description": "optional_description",  // New field
+  "semester": "semester_number",
+  "cousers": "[...]", // List of couses from that thread 
+  "subjects": "[...]", // List of subjects from that thread 
   "created_at": "2025-01-01T00:00:00.000000",
   "posts": [...] // Only included in GET /api/threads/<id>
 }
@@ -92,5 +100,12 @@ Posts have the following structure:
 ## Testing
 Run the test script to verify the API is working:
 ```bash
-python test_api.py
+python tests.py
 ```
+
+## Administration Endpoints
+
+### Health check
+
+- `GET /health - verify if the DB connection`
+- `GET /health/detailed - returns a detailed description of DB's health`
