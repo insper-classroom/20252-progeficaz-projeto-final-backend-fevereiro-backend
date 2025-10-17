@@ -1,5 +1,8 @@
 import requests
 import json
+from dotenv import load_dotenv
+# Load environment variables
+load_dotenv(".env")
 
 def test_api():
     print("Testing Forum API...")

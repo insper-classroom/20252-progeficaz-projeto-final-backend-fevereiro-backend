@@ -1,0 +1,106 @@
+{
+    "info": {
+        "title": "Forum API",
+        "version": "1.0.0",
+        "description": "API for managing forum threads and search filters"
+    },
+    "routes": {
+        "/": {
+            "method": "GET",
+            "description": "Basic route for testing",
+            "response": {
+                "message": "working"
+            }
+        },
+        "/api": {
+            "threads": {
+                "description": "Endpoints related to forum threads",
+                "endpoints": {
+                    "/threads": {
+                        "methods": [
+                            "GET",
+                            "POST"
+                        ],
+                        "description": "Get all threads or create a new thread",
+                        "response": {
+                            "GET": "List of all threads",
+                            "POST": "Confirmation of thread creation"
+                        },
+                        "url": "http://localhost:5000/api/threads"
+                    },
+                    "/threads/<thread_id>": {
+                        "methods": [
+                            "GET",
+                            "PUT",
+                            "DELETE"
+                        ],
+                        "description": "Get, update, or delete a specific thread by ID",
+                        "response": {
+                            "GET": "Details of the specified thread",
+                            "PUT": "Confirmation of thread update",
+                            "DELETE": "Confirmation of thread deletion"
+                        },
+                        "url": "http://localhost:5000/api/threads/<thread_id>"
+                    }
+                }
+            },
+            "search": {
+                "description": "Endpoints for searching threads",
+                "endpoints": {
+                    "/filters/config": {
+                        "method": "GET",
+                        "description": "Get the complete filter configuration",
+                        "response": {
+                            "filters": {
+                                "author": "string",
+                                "dateRange": {
+                                    "from": "date",
+                                    "to": "date"
+                                },
+                                "keywords": [
+                                    "string"
+                                ]
+                            }
+                        },
+                        "url": "http://localhost:5000/api/filters/config"
+                    },
+                    "/filters/<filter_type>": {
+                        "method": "GET",
+                        "options": [
+                            "semester",
+                            "course",
+                            "subject"
+                        ],
+                        "description": "Get options for a specific filter type",
+                        "response": {
+                            "options": [
+                                "list of options for the specified filter type"
+                            ]
+                        },
+                        "urls": [
+                            "http://localhost:5000/api/filters/semester",
+                            "http://localhost:5000/api/filters/course",
+                            "http://localhost:5000/api/filters/subject"
+                        ]
+                    }
+                }
+            }
+        },
+        "/health": {
+            "/": {
+                "method": "GET",
+                "description": "Health check endpoint",
+                "response": {
+                    "status": "OK"
+                },
+                "url": "http://localhost:5000/health/"
+            },
+            "/detailed": {
+                "method": "GET",
+                "description": "Detailed health check endpoint",
+                "response": "A set of health metrics",
+                "url": "http://localhost:5000/health/detailed"
+            }
+        }
+    }
+}

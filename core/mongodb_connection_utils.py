@@ -8,7 +8,8 @@ import time
 from datetime import datetime
 import mongoengine as me
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure, ConfigurationError
-from models import Thread, Post, get_brasilia_now, utc_to_brasilia
+from api.threads.models import Thread, Post
+from core.utils import utc_to_brasilia
 
 
 def test_mongodb_connection(uri=None, timeout=10):
