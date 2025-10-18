@@ -14,7 +14,7 @@ def get_filters_config() -> api_response:
 
 def get_filters_by_type(filter_type: str, request: Request) -> api_response:
     """Get filter options by type."""
-    if filter_type == 'semester':
+    if filter_type == 'semesters':
         # Get all semester options.
         try:
 
@@ -22,13 +22,13 @@ def get_filters_by_type(filter_type: str, request: Request) -> api_response:
         except ImportError:
             return jsonify({'error': 'Filter configuration not available'}), 500
 
-    elif filter_type == 'course':
+    elif filter_type == 'courses':
         # Get all course options.
         try:
             return jsonify(get_course_options()), 200
         except ImportError:
             return jsonify({'error': 'Filter configuration not available'}), 500
-    elif filter_type == 'subject':
+    elif filter_type == 'subjects':
         # Get subject options based on selected courses and semester
         try:
             if request is None:

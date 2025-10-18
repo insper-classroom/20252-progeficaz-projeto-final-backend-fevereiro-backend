@@ -68,7 +68,7 @@ The API will be available at http://localhost:5000/api
 ### Filter Options
 - `GET /api/filters/config' - get the complete filter configuration`
 - `GET /api/filters/<str:filter_type>' - get the filter configuration for a type`
-  - Available types = [semester, course, subject]
+  - Available types = [semesters, courses, subjects]
 
 ### Thread Model
 Threads now support an optional `description` field with the following structure:

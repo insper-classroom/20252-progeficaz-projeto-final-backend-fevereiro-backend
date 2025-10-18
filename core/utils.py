@@ -87,14 +87,14 @@ def update_index_json() -> None:
                         },
                         "/filters/<filter_type>": {
                             "method": "GET",
-                            "options": ["semester", "course", "subject"],
+                            "options": ["semesters", "courses", "subjects"],
                             "description": "Get options for a specific filter type",
                             "response": {
                                 "options": ["list of options for the specified filter type"]
                             },
-                            "urls": [f"{BASE_URL}/api/filters/semester",
-                                    f"{BASE_URL}/api/filters/course",
-                                    f"{BASE_URL}/api/filters/subject"]
+                            "urls": [f"{BASE_URL}/api/filters/semesters",
+                                    f"{BASE_URL}/api/filters/courses",
+                                    f"{BASE_URL}/api/filters/subjects"]
                         }
                     }
                 }

@@ -67,9 +67,9 @@
                     "/filters/<filter_type>": {
                         "method": "GET",
                         "options": [
-                            "semester",
-                            "course",
-                            "subject"
+                            "semesters",
+                            "courses",
+                            "subjects"
                         ],
                         "description": "Get options for a specific filter type",
                         "response": {
@@ -78,9 +78,9 @@
                             ]
                         },
                         "urls": [
-                            "http://localhost:5000/api/filters/semester",
-                            "http://localhost:5000/api/filters/course",
-                            "http://localhost:5000/api/filters/subject"
+                            "http://localhost:5000/api/filters/semesters",
+                            "http://localhost:5000/api/filters/courses",
+                            "http://localhost:5000/api/filters/subjects"
                         ]
                     }
                 }
