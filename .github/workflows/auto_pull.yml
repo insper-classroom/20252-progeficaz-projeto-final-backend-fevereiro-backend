@@ -21,7 +21,10 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /home/ubuntu/projeto3/
-            git pull origin main
-            sudo systemctl restart gunicorn.service
+            git stash # Stash any local changes
+            git stash drop # Drop the stashed changes
+
+            git pull --rebase origin main # Pull the latest changes from main branch
+            sudo systemctl restart gunicorn.service # Restart Gunicorn to apply changes
 
 

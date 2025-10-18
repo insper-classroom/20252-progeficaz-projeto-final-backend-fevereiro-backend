@@ -69,6 +69,3 @@ FILTER_CONFIG: dict[str, dict] = {
         "options": SUBJECTS
     }
 }
-
-# Url configuration
-BASE_URL: str = "http://localhost:5000"

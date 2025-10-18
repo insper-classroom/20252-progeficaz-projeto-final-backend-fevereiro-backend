@@ -1,7 +1,7 @@
 from datetime import datetime
+import os
 import pytz
 import json
-from core.constants import BASE_URL
 
 # Time Utilities
 
@@ -26,6 +26,7 @@ def utc_to_brasilia(utc_datetime):
 
 def update_index_json() -> None:
     """Update the JSON index file with variables."""
+    BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
     
     json_data = {   
         "info": {
