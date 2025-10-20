@@ -28,10 +28,6 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# JWT Configuration
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
-jwt = JWTManager(app)
 
 # MongoDB configuration
 mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/forum_db')
