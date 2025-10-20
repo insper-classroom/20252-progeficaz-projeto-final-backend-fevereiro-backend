@@ -1,1 +1,1 @@
-api_response = dict[str, int]
+api_response = tuple[dict, int]
