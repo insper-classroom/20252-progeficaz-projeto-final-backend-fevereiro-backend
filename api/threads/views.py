@@ -1,5 +1,5 @@
 from flask import request, jsonify
-from api.threads.models import Thread, Post
+from api.threads.models import Thread, Post 
 from mongoengine.errors import DoesNotExist, ValidationError
 from core.types import api_response
 
