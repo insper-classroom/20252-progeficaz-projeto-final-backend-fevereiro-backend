@@ -121,3 +121,50 @@ def update_index_json() -> None:
     with open('core/index.json', 'w') as f:
         json.dump(json_data, f, indent=4)
     return
+
+
+# API Response Utilities
+
+def success_response(data=None, message=None, status_code=200):
+    """Create a standardized success response"""
+    from flask import jsonify
+    
+    response_data = {
+        'success': True,
+        'status_code': status_code
+    }
+    
+    if message:
+        response_data['message'] = message
+    
+    if data is not None:
+        response_data['data'] = data
+    
+    return jsonify(response_data), status_code
+
+
+def error_response(message, status_code=400, details=None):
+    """Create a standardized error response"""
+    from flask import jsonify
+    
+    response_data = {
+        'success': False,
+        'status_code': status_code,
+        'error': {
+            'message': message
+        }
+    }
+    
+    if details:
+        response_data['error']['details'] = details
+    
+    return jsonify(response_data), status_code
+
+
+def validation_error_response(errors):
+    """Create a standardized validation error response"""
+    return error_response(
+        message="Validation failed",
+        status_code=422,
+        details=errors
+    )
