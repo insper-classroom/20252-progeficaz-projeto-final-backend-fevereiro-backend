@@ -1,6 +1,7 @@
 # Flask application setup
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 
 # Mongo DB setup
 import mongoengine as me
@@ -9,6 +10,7 @@ import mongoengine as me
 from api.threads.routes import threads_bp
 from api.health.routes import health_bp
 from api.search.routes import search_bp
+from api.authentication.routes import auth_bp
 
 # Environment variables
 import os
@@ -17,6 +19,7 @@ from dotenv import load_dotenv
 # JSON handling
 from core.utils import update_index_json
 import json
+from datetime import timedelta
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +27,7 @@ load_dotenv()
 # Init Flask app and enable CORS
 app = Flask(__name__)
 CORS(app)
+
 
 # MongoDB configuration
 mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/forum_db')
@@ -50,6 +54,33 @@ except Exception as e:
 app.register_blueprint(threads_bp, url_prefix='/api')
 app.register_blueprint(search_bp, url_prefix='/api')
 app.register_blueprint(health_bp, url_prefix='/health')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
+
+# Global error handlers
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        'error': 'Resource not found'
+    }), 404
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({
+        'error': 'Method not allowed'
+    }), 405
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({
+        'error': 'Internal server error'
+    }), 500
+
+# JWT error handlers
+@app.errorhandler(422)
+def invalid_token(error):
+    return jsonify({
+        'error': 'Invalid token'
+    }), 422
 
 # Basic route for testing
 @app.route('/')
