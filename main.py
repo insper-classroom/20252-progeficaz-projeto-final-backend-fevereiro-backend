@@ -64,42 +64,26 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
-        'success': False,
-        'status_code': 404,
-        'error': {
-            'message': 'Resource not found'
-        }
+        'error': 'Resource not found'
     }), 404
 
 @app.errorhandler(405)
 def method_not_allowed(error):
     return jsonify({
-        'success': False,
-        'status_code': 405,
-        'error': {
-            'message': 'Method not allowed'
-        }
+        'error': 'Method not allowed'
     }), 405
 
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({
-        'success': False,
-        'status_code': 500,
-        'error': {
-            'message': 'Internal server error'
-        }
+        'error': 'Internal server error'
     }), 500
 
 # JWT error handlers
 @app.errorhandler(422)
 def invalid_token(error):
     return jsonify({
-        'success': False,
-        'status_code': 422,
-        'error': {
-            'message': 'Invalid token'
-        }
+        'error': 'Invalid token'
     }), 422
 
 # Basic route for testing

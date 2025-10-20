@@ -129,16 +129,13 @@ def success_response(data=None, message=None, status_code=200):
     """Create a standardized success response"""
     from flask import jsonify
     
-    response_data = {
-        'success': True,
-        'status_code': status_code
-    }
+    response_data = {}
     
     if message:
         response_data['message'] = message
     
     if data is not None:
-        response_data['data'] = data
+        response_data.update(data)
     
     return jsonify(response_data), status_code
 
@@ -148,15 +145,11 @@ def error_response(message, status_code=400, details=None):
     from flask import jsonify
     
     response_data = {
-        'success': False,
-        'status_code': status_code,
-        'error': {
-            'message': message
-        }
+        'error': message
     }
     
     if details:
-        response_data['error']['details'] = details
+        response_data['details'] = details
     
     return jsonify(response_data), status_code
 
