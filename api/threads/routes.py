@@ -57,3 +57,21 @@ def update_post(post_id):
 def delete_post(post_id):
     """Delete a specific post"""
     return vi.delete_post_by_id(post_id)
+
+
+# VOTING endpoints
+
+@threads_bp.route('/posts/<post_id>/upvote', methods=['POST'])
+def upvote_post(post_id):
+    """Upvote a specific post"""
+    return vi.upvote_post_by_id(post_id)
+
+@threads_bp.route('/posts/<post_id>/downvote', methods=['POST'])
+def downvote_post(post_id):
+    """Downvote a specific post"""
+    return vi.downvote_post_by_id(post_id)
+
+@threads_bp.route('/posts/<post_id>/vote', methods=['DELETE'])
+def remove_vote(post_id):
+    """Remove user's vote from a specific post"""
+    return vi.remove_vote_by_post_id(post_id)

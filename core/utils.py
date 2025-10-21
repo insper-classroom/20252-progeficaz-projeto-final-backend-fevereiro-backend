@@ -72,6 +72,40 @@ def update_index_json() -> None:
                                 "DELETE": "Confirmation of thread deletion"
                             },
                             "url": f"{BASE_URL}/api/threads/<thread_id>"
+                        },
+                        "/posts/<post_id>": {
+                            "methods": ["GET", "PUT", "DELETE"],
+                            "description": "Get, update, or delete a specific post by ID",
+                            "response": {
+                                "GET": "Details of the specified post",
+                                "PUT": "Confirmation of post update",
+                                "DELETE": "Confirmation of post deletion"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>"
+                        },
+                        "/posts/<post_id>/upvote": {
+                            "methods": ["POST"],
+                            "description": "Upvote a specific post (requires authentication)",
+                            "response": {
+                                "POST": "Updated vote counts and confirmation"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>/upvote"
+                        },
+                        "/posts/<post_id>/downvote": {
+                            "methods": ["POST"],
+                            "description": "Downvote a specific post (requires authentication)",
+                            "response": {
+                                "POST": "Updated vote counts and confirmation"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>/downvote"
+                        },
+                        "/posts/<post_id>/vote": {
+                            "methods": ["DELETE"],
+                            "description": "Remove user's vote from a specific post (requires authentication)",
+                            "response": {
+                                "DELETE": "Updated vote counts and confirmation"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>/vote"
                         }
 
                     }

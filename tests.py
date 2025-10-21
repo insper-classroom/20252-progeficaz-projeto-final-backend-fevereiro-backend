@@ -96,6 +96,93 @@ def test_api():
                     post_detail = response.json()
                     print(f"Post content: {post_detail['content']}")
                     print(f"Post author: {post_detail['author']}")
+                    print(f"Post upvotes: {post_detail.get('upvotes', 0)}")
+                    print(f"Post downvotes: {post_detail.get('downvotes', 0)}")
+                    print(f"Post score: {post_detail.get('score', 0)}")
+                
+                # Test 9: Test voting (requires authentication)
+                print(f"\n9. Testing voting without authentication")
+                response = requests.post(f'http://localhost:5000/api/posts/{post_id}/upvote')
+                print(f"Upvote without auth - Status: {response.status_code}")
+                if response.status_code == 422:
+                    print("✅ Correctly requires authentication for voting")
+                
+                # Test 10: Test user registration and login for voting
+                print(f"\n10. Testing user registration for voting")
+                test_user = {
+                    'username': 'testuser',
+                    'password': 'testpass123',
+                    'email': 'testuser@al.insper.edu.br',
+                    'matricula': '22.00000-0',
+                    'name': 'Test User'
+                }
+                response = requests.post('http://localhost:5000/api/auth/register', json=test_user)
+                print(f"Registration - Status: {response.status_code}")
+                
+                if response.status_code == 201:
+                    # Login to get token
+                    login_data = {
+                        'username': 'testuser',
+                        'password': 'testpass123'
+                    }
+                    response = requests.post('http://localhost:5000/api/auth/login', json=login_data)
+                    print(f"Login - Status: {response.status_code}")
+                    
+                    if response.status_code == 200:
+                        token_data = response.json()
+                        token = token_data.get('access_token')
+                        headers = {'Authorization': f'Bearer {token}'}
+                        
+                        # Test 11: Test upvoting with authentication
+                        print(f"\n11. Testing authenticated upvoting")
+                        response = requests.post(f'http://localhost:5000/api/posts/{post_id}/upvote', headers=headers)
+                        print(f"Upvote - Status: {response.status_code}")
+                        if response.status_code == 201:
+                            vote_result = response.json()
+                            print(f"Upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"Score: {vote_result.get('score', 0)}")
+                        
+                        # Test 12: Test duplicate upvote (should fail - one vote per user)
+                        print(f"\n12. Testing duplicate upvote")
+                        response = requests.post(f'http://localhost:5000/api/posts/{post_id}/upvote', headers=headers)
+                        print(f"Duplicate upvote - Status: {response.status_code}")
+                        if response.status_code == 409:
+                            print("✅ Correctly prevents duplicate voting")
+                        else:
+                            print(f"❌ Expected 409, got {response.status_code}: {response.json()}")
+                        
+                        # Test 13: Test downvoting (should fail since user already voted)
+                        print(f"\n13. Testing downvote after upvote")
+                        response = requests.post(f'http://localhost:5000/api/posts/{post_id}/downvote', headers=headers)
+                        print(f"Downvote - Status: {response.status_code}")
+                        if response.status_code == 409:
+                            print("✅ Correctly prevents second vote from same user")
+                        else:
+                            vote_result = response.json()
+                            print(f"Upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"Downvotes: {vote_result.get('downvotes', 0)}")
+                            print(f"Score: {vote_result.get('score', 0)}")
+                        
+                        # Test 14: Test removing vote
+                        print(f"\n14. Testing vote removal")
+                        response = requests.delete(f'http://localhost:5000/api/posts/{post_id}/vote', headers=headers)
+                        print(f"Remove vote - Status: {response.status_code}")
+                        if response.status_code == 200:
+                            vote_result = response.json()
+                            print(f"After removal upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"After removal downvotes: {vote_result.get('downvotes', 0)}")
+                            print(f"After removal score: {vote_result.get('score', 0)}")
+                        
+                        # Test 15: Test voting again after removal
+                        print(f"\n15. Testing downvote after vote removal")
+                        response = requests.post(f'http://localhost:5000/api/posts/{post_id}/downvote', headers=headers)
+                        print(f"Downvote after removal - Status: {response.status_code}")
+                        if response.status_code == 201:
+                            vote_result = response.json()
+                            print(f"✅ Can vote again after removal")
+                            print(f"Final upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"Final downvotes: {vote_result.get('downvotes', 0)}")
+                            print(f"Final score: {vote_result.get('score', 0)}")
         
         print("\n✅ API tests completed successfully!")
         
