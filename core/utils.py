@@ -122,8 +122,49 @@ def update_index_json() -> None:
         json.dump(json_data, f, indent=4)
     return
 
+# Auth Utilities  
+  
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
 jwt = JWTManager()
+
+# API Response Utilities
+
+def success_response(data=None, message=None, status_code=200):
+    """Create a standardized success response"""
+    from flask import jsonify
+    
+    response_data = {}
+    
+    if message:
+        response_data['message'] = message
+    
+    if data is not None:
+        response_data.update(data)
+    
+    return jsonify(response_data), status_code
+
+
+def error_response(message, status_code=400, details=None):
+    """Create a standardized error response"""
+    from flask import jsonify
+    
+    response_data = {
+        'error': message
+    }
+    
+    if details:
+        response_data['details'] = details
+    
+    return jsonify(response_data), status_code
+
+
+def validation_error_response(errors):
+    """Create a standardized validation error response"""
+    return error_response(
+        message="Validation failed",
+        status_code=422,
+        details=errors
+    )
