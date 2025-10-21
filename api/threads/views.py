@@ -8,21 +8,9 @@ from core.utils import success_response, error_response, validation_error_respon
 def list_threads() -> api_response:
     """List all threads"""
     try:
-        # Get filter parameters
-        semester = request.args.get('semester', type=int)
-        course = request.args.get('course')
-        subject = request.args.get('subject')
-        
+
         # Build query
         query = Thread.objects
-        
-        if semester:
-            query = query.filter(semester=semester)
-        if course:
-            query = query.filter(courses__icontains=course)
-        if subject:
-            query = query.filter(subjects__icontains=subject)
-        
         # Apply ordering
         threads = query.order_by('-created_at')
         
@@ -31,7 +19,7 @@ def list_threads() -> api_response:
             'threads': [t.to_dict() for t in threads]
         }
         
-        return success_response(data=data)
+        return success_response(data=data, status_code=200)
     
     except Exception as e:
         return error_response("Failed to retrieve threads", 500)
@@ -43,7 +31,7 @@ def get_thread_by_id(thread_id: str) -> api_response:
         posts = Post.objects(thread=thread).order_by('created_at')
         data = thread.to_dict()
         data['posts'] = [p.to_dict() for p in posts]
-        return success_response(data=data)
+        return success_response(data=data, status_code=200)
     except DoesNotExist:
         return error_response('Thread not found', 404)
     except Exception as e:
@@ -53,12 +41,12 @@ def create_thread(data: dict) -> api_response:
     """Create a new thread"""
     
     title = data.get('title', '').strip()
-    description = data.get('description', '').strip()
+    description = data.get('description', '').strip() # Optional description field
     
     # Filter fields (with defaults for backward compatibility)
-    semester = data.get('semester', 1)
-    courses = data.get('courses', [])
-    subjects = data.get('subjects', ['Geral'])
+    semester = data.get('semester', 1) # Default to 1st semester
+    courses = data.get('courses', [])   # Default to empty list
+    subjects = data.get('subjects', ['Geral'])  # Default subject
     
     # Validation
     errors = {}
@@ -111,9 +99,9 @@ def update_thread_by_id(thread_id: str, data: dict) -> api_response:
             thread.subjects = data['subjects']
         
         thread.save()
-        return jsonify(thread.to_dict()), 200
+        return success_response(message="Thread updated successfully", status_code=201)
     except DoesNotExist:
-        return jsonify({'error': 'Thread not found'}), 404
+        return error_response('Thread not found', 404)
     except ValidationError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
@@ -131,11 +119,11 @@ def delete_thread_by_id(thread_id: str) -> api_response:
         # Delete the thread
         thread.delete()
         
-        return jsonify({'message': 'Thread and associated posts deleted successfully'}), 200
+        return success_response(message='Thread and associated posts deleted successfully', status_code=200)
     except DoesNotExist:
-        return jsonify({'error': 'Thread not found'}), 404
+        return error_response('Thread not found', 404)
     except Exception as e:
-        return jsonify({'error': 'Invalid thread ID'}), 400
+        return error_response('Invalid thread ID', 400)
 
 
 # POSTS views 
@@ -144,11 +132,11 @@ def get_post_by_id(post_id: str) -> api_response:
     """Get a specific post by ID"""
     try:
         post = Post.objects.get(id=post_id)
-        return jsonify(post.to_dict()), 200
+        return success_response(data=post.to_dict(), status_code=200)
     except DoesNotExist:
-        return jsonify({'error': 'Post not found'}), 404
+        return error_response('Post not found', 404)
     except Exception as e:
-        return jsonify({'error': 'Invalid post ID'}), 400
+        return error_response('Invalid post ID', 400)
 
 def create_post(thread_id: str, data: dict) -> api_response:
     """Create a new post in a thread"""
@@ -157,17 +145,17 @@ def create_post(thread_id: str, data: dict) -> api_response:
         author = data.get('author') or 'Anonymous'
         content = data.get('content')
         if not content:
-            return jsonify({'error': 'content required'}), 400
+            return error_response('content required', 400)
         
         post = Post(thread=thread, author=author, content=content)
         post.save()
-        return jsonify(post.to_dict()), 201
+        return success_response(data=post.to_dict(), message="Post created successfully", status_code=201)
     except DoesNotExist:
-        return jsonify({'error': 'Thread not found'}), 404
+        return error_response('Thread not found', 404)
     except ValidationError as e:
-        return jsonify({'error': str(e)}), 400
+        return error_response(str(e), 400)
     except Exception as e:
-        return jsonify({'error': 'Invalid thread ID'}), 400
+        return error_response('Invalid thread ID', 400)
 
 def update_post_by_id(post_id: str, data: dict) -> api_response:
     """Update a post's content or author"""
@@ -180,13 +168,13 @@ def update_post_by_id(post_id: str, data: dict) -> api_response:
             post.author = data['author']
         
         post.save()
-        return jsonify(post.to_dict())
+        return success_response( message="Post updated successfully", status_code=201)
     except DoesNotExist:
-        return jsonify({'error': 'Post not found'}), 404
+        return error_response('Post not found', 404)
     except ValidationError as e:
-        return jsonify({'error': str(e)}), 400
+        return error_response(str(e), 400)
     except Exception as e:
-        return jsonify({'error': 'Invalid post ID'}), 400
+        return error_response('Invalid thread ID', 400)
 
 
 def delete_post_by_id(post_id: str) -> api_response:
@@ -194,8 +182,8 @@ def delete_post_by_id(post_id: str) -> api_response:
     try:
         post = Post.objects.get(id=post_id)
         post.delete()
-        return jsonify({'message': 'Post deleted successfully'}), 200
+        return success_response(message='Post deleted successfully', status_code=200)
     except DoesNotExist:
-        return jsonify({'error': 'Post not found'}), 404
+        return error_response('Post not found', 404)
     except Exception as e:
-        return jsonify({'error': 'Invalid post ID'}), 400
+        return error_response('Invalid post ID', 400)
