@@ -6,6 +6,10 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Time Utilities
 
@@ -174,7 +178,7 @@ def validation_error_response(errors):
     
 def send_email(receiver_email, subject, html = ""):
     """
-    Send an email with HTML content - RESTful compliant.
+    Send an email with HTML content.
     
     Args:
         receiver_email (str): The recipient's email address
@@ -182,7 +186,7 @@ def send_email(receiver_email, subject, html = ""):
         html (str): The HTML content of the email
         
     Returns:
-        tuple: (response_data, status_code) - RESTful response with HTTP status code
+        tuple: (response_data, status_code) - HTTP status code
     """
     
     # Validate input parameters
@@ -207,8 +211,9 @@ def send_email(receiver_email, subject, html = ""):
             }
         }, 400  # Bad Request
 
-    sender_email = "fevereiros0202@gmail.com"
-    password = "emap yddb goei vlrk "
+
+    sender_email =  os.environ.get('EMAIL', 'example@email.com')   
+    password = os.environ.get('EMAIL_PASS', '1234567890')
 
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
@@ -277,5 +282,6 @@ def send_email(receiver_email, subject, html = ""):
                 "details": str(e)
             }
         }, 500  # Internal Server Error
+        
         
         
