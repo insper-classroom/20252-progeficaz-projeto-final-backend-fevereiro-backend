@@ -130,6 +130,13 @@ def update_index_json() -> None:
         json.dump(json_data, f, indent=4)
     return
 
+# Auth Utilities  
+  
+from flask_jwt_extended import JWTManager
+from flask_bcrypt import Bcrypt
+
+bcrypt = Bcrypt()
+jwt = JWTManager()
 
 # API Response Utilities
 
@@ -169,7 +176,6 @@ def validation_error_response(errors):
         status_code=422,
         details=errors
     )
-    
     
 
 #email sending utils

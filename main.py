@@ -1,16 +1,10 @@
 # Flask application setup
 from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
+from core.utils import jwt, bcrypt
 
 # Mongo DB setup
 import mongoengine as me
-
-# Blueprints
-from api.threads.routes import threads_bp
-from api.health.routes import health_bp
-from api.search.routes import search_bp
-from api.authentication.routes import auth_bp
 
 # Environment variables
 import os
@@ -28,9 +22,16 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+jwt.init_app(app)
+bcrypt.init_app(app)
+
+#authentication requirements
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
 # MongoDB configuration
 mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/forum_db')
+
+
 
 # Connect to MongoDB
 try:
@@ -49,6 +50,12 @@ try:
     print("Index JSON file updated successfully.")
 except Exception as e:
     print(f"Failed to update index JSON file: {e}")
+
+# Blueprints
+from api.threads.routes import threads_bp
+from api.health.routes import health_bp
+from api.search.routes import search_bp
+from api.authentication.routes import auth_bp
 
 # Register blueprints
 app.register_blueprint(threads_bp, url_prefix='/api')
