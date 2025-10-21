@@ -3,16 +3,6 @@ from api.authentication.models import User
 from core.types import api_response
 from flask_jwt_extended import create_access_token
 from core.utils import bcrypt
-import mongoengine as me
-
-import os
-
-
-mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/forum_db')
-client = me.connect(host=mongodb_uri)
-db = client["fevereiro"]
-
-
 
 
 def register(data: dict) -> api_response:
