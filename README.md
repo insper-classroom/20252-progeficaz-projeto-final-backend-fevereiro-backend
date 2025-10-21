@@ -40,7 +40,11 @@ This is a minimal Flask REST API for the forum application. It uses MongoDB as t
    # cp .env.example .env  # On macOS/Linux
    ```
 
-4. Edit .env file and set your MONGODB_URI if needed
+4. Edit .env file and set your MONGODB_URI and OPENAI_API_KEY:
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   OPENAI_API_KEY=your_openai_api_key
+   ```
 
 5. Run the app:
    ```bash
@@ -50,6 +54,15 @@ This is a minimal Flask REST API for the forum application. It uses MongoDB as t
 The API will be available at http://localhost:5000/api
 
 ## API Endpoints
+
+### Search
+- `GET /api/search/threads?q=<query>` - search threads by title
+  - Query parameters:
+    - `q` (required): search query string
+    - `semester` (optional): filter by semester id
+    - `courses` (optional): filter by course ids (can be multiple)
+    - `subjects` (optional): filter by subject names (can be multiple)
+  - Example: `/api/search/threads?q=algoritmo&semester=3&courses=cc`
 
 ### Threads
 - `GET /api/threads` - list threads
@@ -96,6 +109,25 @@ Posts have the following structure:
   "created_at": "2025-01-01T00:00:00.000000"
 }
 ```
+
+## Content Moderation
+
+The API includes automatic content moderation using OpenAI's moderation API. When creating or updating threads and posts:
+
+- **Threads**: Both title and description are checked for inappropriate content
+- **Posts**: Content is checked for inappropriate content
+
+If inappropriate content is detected, the request will be rejected with a 400 status code and a message explaining why the content was blocked. The user's input is preserved on the client side and not deleted.
+
+Categories checked include:
+- Sexual content
+- Hate speech
+- Harassment
+- Self-harm content
+- Violence
+- Threats
+
+Make sure to set your `OPENAI_API_KEY` in the `.env` file for moderation to work.
 
 ## Testing
 Run the test script to verify the API is working:
