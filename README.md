@@ -77,6 +77,25 @@ The API will be available at http://localhost:5000/api
 - `POST /api/threads/<id>/posts` - create post `{author, content}`
 - `PUT /api/posts/<id>` - update post `{author?, content?}`
   - Both fields are optional, only provided fields will be updated
+- `DELETE /api/posts/<id>` - delete specific post
+
+### Voting (Authentication Required)
+
+#### Post Voting
+- `POST /api/posts/<id>/upvote` - upvote a post (requires JWT token) - one vote per user, tracks user in voted_users list
+- `POST /api/posts/<id>/downvote` - downvote a post (requires JWT token) - one vote per user, tracks user in voted_users list
+- `DELETE /api/posts/<id>/vote` - remove your vote from a post (requires JWT token) - removes user from voted_users list
+
+#### Thread Voting
+- `POST /api/threads/<id>/upvote` - upvote a thread (requires JWT token) - one vote per user, tracks user in voted_users list
+- `POST /api/threads/<id>/downvote` - downvote a thread (requires JWT token) - one vote per user, tracks user in voted_users list  
+- `DELETE /api/threads/<id>/vote` - remove your vote from a thread (requires JWT token) - removes user from voted_users list
+
+### Authentication
+- `POST /api/auth/register` - register new user `{username, password, email, matricula, name}`
+  - email must be @al.insper.edu.br domain
+- `POST /api/auth/login` - login user `{username, password}`
+  - returns JWT access_token
 
 ### Filter Options
 - `GET /api/filters/config' - get the complete filter configuration`
@@ -84,7 +103,7 @@ The API will be available at http://localhost:5000/api
   - Available types = [semesters, courses, subjects]
 
 ### Thread Model
-Threads now support an optional `description` field with the following structure:
+Threads now support voting and an optional `description` field with the following structure:
 ```json
 {
   "id": "thread_id",
@@ -93,6 +112,9 @@ Threads now support an optional `description` field with the following structure
   "semester": "semester_number",
   "cousers": "[...]", // List of couses from that thread 
   "subjects": "[...]", // List of subjects from that thread 
+  "upvotes": 0,           // New field
+  "downvotes": 0,         // New field  
+  "score": 0,             // New field (upvotes - downvotes)
   "created_at": "2025-01-01T00:00:00.000000",
   "posts": [...] // Only included in GET /api/threads/<id>
 }
@@ -106,6 +128,9 @@ Posts have the following structure:
   "thread_id": "thread_id", 
   "author": "author_name",
   "content": "post_content",
+  "upvotes": 0,           // New field
+  "downvotes": 0,         // New field  
+  "score": 0,             // New field (upvotes - downvotes)
   "created_at": "2025-01-01T00:00:00.000000"
 }
 ```
