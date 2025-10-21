@@ -119,8 +119,19 @@ def test_api():
                 response = requests.post('http://localhost:5000/api/auth/register', json=test_user)
                 print(f"Registration - Status: {response.status_code}")
                 
+                # Handle both new registration (201) and existing user (409/400)
+                user_exists = False
                 if response.status_code == 201:
-                    # Login to get token
+                    print("✅ User registered successfully")
+                elif response.status_code in [409, 400]:
+                    print("ℹ️ User already exists, will try to login")
+                    user_exists = True
+                else:
+                    print(f"❌ Unexpected registration status: {response.status_code}")
+                    print(f"Response: {response.json()}")
+                
+                # Try to login regardless of registration outcome
+                if response.status_code == 201 or user_exists:
                     login_data = {
                         'username': 'testuser',
                         'password': 'testpass123'
