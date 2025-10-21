@@ -75,3 +75,21 @@ def downvote_post(post_id):
 def remove_vote(post_id):
     """Remove user's vote from a specific post"""
     return vi.remove_vote_by_post_id(post_id)
+
+
+# THREAD VOTING endpoints
+
+@threads_bp.route('/threads/<thread_id>/upvote', methods=['POST'])
+def upvote_thread(thread_id):
+    """Upvote a specific thread"""
+    return vi.upvote_thread_by_id(thread_id)
+
+@threads_bp.route('/threads/<thread_id>/downvote', methods=['POST'])
+def downvote_thread(thread_id):
+    """Downvote a specific thread"""
+    return vi.downvote_thread_by_id(thread_id)
+
+@threads_bp.route('/threads/<thread_id>/vote', methods=['DELETE'])
+def remove_thread_vote(thread_id):
+    """Remove user's vote from a specific thread"""
+    return vi.remove_thread_vote_by_id(thread_id)

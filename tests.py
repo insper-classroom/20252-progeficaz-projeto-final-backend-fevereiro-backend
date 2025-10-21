@@ -183,6 +183,57 @@ def test_api():
                             print(f"Final upvotes: {vote_result.get('upvotes', 0)}")
                             print(f"Final downvotes: {vote_result.get('downvotes', 0)}")
                             print(f"Final score: {vote_result.get('score', 0)}")
+                        
+                        # Test 16: Test thread upvoting with authentication
+                        print(f"\n16. Testing authenticated thread upvoting")
+                        response = requests.post(f'http://localhost:5000/api/threads/{thread_id}/upvote', headers=headers)
+                        print(f"Thread upvote - Status: {response.status_code}")
+                        if response.status_code == 201:
+                            vote_result = response.json()
+                            print(f"Thread upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"Thread score: {vote_result.get('score', 0)}")
+                        
+                        # Test 17: Test duplicate thread upvote (should fail - one vote per user)
+                        print(f"\n17. Testing duplicate thread upvote")
+                        response = requests.post(f'http://localhost:5000/api/threads/{thread_id}/upvote', headers=headers)
+                        print(f"Duplicate thread upvote - Status: {response.status_code}")
+                        if response.status_code == 409:
+                            print("✅ Correctly prevents duplicate thread voting")
+                        else:
+                            print(f"❌ Expected 409, got {response.status_code}: {response.json()}")
+                        
+                        # Test 18: Test thread downvoting (should fail since user already voted)
+                        print(f"\n18. Testing thread downvote after upvote")
+                        response = requests.post(f'http://localhost:5000/api/threads/{thread_id}/downvote', headers=headers)
+                        print(f"Thread downvote - Status: {response.status_code}")
+                        if response.status_code == 409:
+                            print("✅ Correctly prevents second vote from same user on thread")
+                        else:
+                            vote_result = response.json()
+                            print(f"Thread upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"Thread downvotes: {vote_result.get('downvotes', 0)}")
+                            print(f"Thread score: {vote_result.get('score', 0)}")
+                        
+                        # Test 19: Test removing thread vote
+                        print(f"\n19. Testing thread vote removal")
+                        response = requests.delete(f'http://localhost:5000/api/threads/{thread_id}/vote', headers=headers)
+                        print(f"Remove thread vote - Status: {response.status_code}")
+                        if response.status_code == 200:
+                            vote_result = response.json()
+                            print(f"After removal thread upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"After removal thread downvotes: {vote_result.get('downvotes', 0)}")
+                            print(f"After removal thread score: {vote_result.get('score', 0)}")
+                        
+                        # Test 20: Test thread voting again after removal
+                        print(f"\n20. Testing thread downvote after vote removal")
+                        response = requests.post(f'http://localhost:5000/api/threads/{thread_id}/downvote', headers=headers)
+                        print(f"Thread downvote after removal - Status: {response.status_code}")
+                        if response.status_code == 201:
+                            vote_result = response.json()
+                            print(f"✅ Can vote on thread again after removal")
+                            print(f"Final thread upvotes: {vote_result.get('upvotes', 0)}")
+                            print(f"Final thread downvotes: {vote_result.get('downvotes', 0)}")
+                            print(f"Final thread score: {vote_result.get('score', 0)}")
         
         print("\n✅ API tests completed successfully!")
         
