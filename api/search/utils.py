@@ -68,3 +68,44 @@ def search_subjects(query, course_ids=None, semester_id=None) -> list[str]:
     query_lower = query.lower()
     
     return [subject for subject in all_subjects if query_lower in subject.lower()]
+
+def search_threads_by_title(query: str, semester_id=None, course_ids=None, subject_ids=None):
+    """Search threads by title with optional filters."""
+    from api.threads.models import Thread
+    
+    if not query or not query.strip():
+        return []
+    
+    # Build the search query
+    search_query = {
+        'title': {'$regex': query, '$options': 'i'}  # Case-insensitive search
+    }
+    
+    # Add optional filters
+    if semester_id:
+        search_query['semester'] = semester_id
+    
+    if course_ids:
+        search_query['courses'] = {'$in': course_ids}
+    
+    if subject_ids:
+        search_query['subjects'] = {'$in': subject_ids}
+    
+    # Execute search
+    threads = Thread.objects(__raw__=search_query).order_by('-created_at')
+    
+    # Format results
+    results = []
+    for thread in threads:
+        results.append({
+            'id': str(thread.id),
+            'title': thread.title,
+            'description': thread.description,
+            'semester': thread.semester,
+            'courses': thread.courses,
+            'subjects': thread.subjects,
+            'created_at': thread.created_at.isoformat(),
+            'post_count': len(thread.posts) if hasattr(thread, 'posts') else 0
+        })
+    
+    return results

@@ -51,6 +51,15 @@ The API will be available at http://localhost:5000/api
 
 ## API Endpoints
 
+### Search
+- `GET /api/search/threads?q=<query>` - search threads by title
+  - Query parameters:
+    - `q` (required): search query string
+    - `semester` (optional): filter by semester id
+    - `courses` (optional): filter by course ids (can be multiple)
+    - `subjects` (optional): filter by subject names (can be multiple)
+  - Example: `/api/search/threads?q=algoritmo&semester=3&courses=cc`
+
 ### Threads
 - `GET /api/threads` - list threads
 - `POST /api/threads` - create thread `{title, description?}`
