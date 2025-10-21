@@ -4,6 +4,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from core.types import api_response
 from core.utils import success_response, error_response, validation_error_response
 from flask_jwt_extended import jwt_required, get_jwt_identity
+# from core.moderation import verificar_thread, verificar_post
 
 # THREADS views
 def list_threads() -> api_response:
@@ -65,6 +66,11 @@ def create_thread(data: dict) -> api_response:
     if errors:
         return validation_error_response(errors)
     
+    # # Verificar moderação de conteúdo
+    # is_safe, moderation_message = verificar_thread(title, description)
+    # if not is_safe:
+    #     return error_response(moderation_message, 400)
+    
     try:
         thread = Thread(
             title=title, 
@@ -84,6 +90,18 @@ def update_thread_by_id(thread_id: str, data: dict) -> api_response:
     """Update a thread's title or description"""
     try:
         thread = Thread.objects.get(id=thread_id)
+        
+        # # Verificar moderação dos campos que serão atualizados
+        # title_to_check = data.get('title', '').strip() if 'title' in data else None
+        # description_to_check = data.get('description', '').strip() if 'description' in data else None
+        
+        # if title_to_check or description_to_check:
+        #     is_safe, moderation_message = verificar_thread(
+        #         title_to_check or thread.title,
+        #         description_to_check if 'description' in data else thread.description
+        #     )
+        #     if not is_safe:
+        #         return error_response(moderation_message, 400)
         
         # Update fields if provided
         if 'title' in data:
@@ -148,6 +166,11 @@ def create_post(thread_id: str, data: dict) -> api_response:
         if not content:
             return error_response('content required', 400)
         
+        # # Verificar moderação do conteúdo
+        # is_safe, moderation_message = verificar_post(content)
+        # if not is_safe:
+        #     return error_response(moderation_message, 400)
+        
         post = Post(thread=thread, author=author, content=content)
         post.save()
         return success_response(data=post.to_dict(), message="Post created successfully", status_code=201)
@@ -162,9 +185,17 @@ def update_post_by_id(post_id: str, data: dict) -> api_response:
     """Update a post's content or author"""
     try:
         post = Post.objects.get(id=post_id)
-        # Update fields if provided
+        
+        # Verificar moderação do conteúdo se estiver sendo atualizado
         if 'content' in data:
+            # content_to_check = data.get('content', '').strip()
+            # if content_to_check:
+            #     is_safe, moderation_message = verificar_post(content_to_check)
+            #     if not is_safe:
+            #         return error_response(moderation_message, 400)
             post.content = data['content']
+        
+        # Update fields if provided
         if 'author' in data:
             post.author = data['author']
         
