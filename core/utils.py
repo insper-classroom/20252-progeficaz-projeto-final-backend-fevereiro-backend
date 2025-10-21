@@ -121,3 +121,9 @@ def update_index_json() -> None:
     with open('core/index.json', 'w') as f:
         json.dump(json_data, f, indent=4)
     return
+
+from flask_jwt_extended import JWTManager
+from flask_bcrypt import Bcrypt
+
+bcrypt = Bcrypt()
+jwt = JWTManager()

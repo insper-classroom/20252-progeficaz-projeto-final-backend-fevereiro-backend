@@ -3,6 +3,7 @@ from mongoengine import Document, StringField
 class User(Document):
     """User model"""
     username = StringField(required=True)
+    name = StringField(required=True)
     email = StringField(required=True, unique=True)
     password = StringField(required=True)
     matricula = StringField(required=True, unique=True)
@@ -16,6 +17,7 @@ class User(Document):
         
         return {
             "id": str(self.id),
+            "nome": self.name,
             "username": self.username,
             "email": self.email,
             "matricula":self.role,            
