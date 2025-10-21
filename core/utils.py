@@ -2,6 +2,14 @@ from datetime import datetime
 import os
 import pytz
 import json
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import re
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Time Utilities
 
@@ -122,6 +130,13 @@ def update_index_json() -> None:
         json.dump(json_data, f, indent=4)
     return
 
+# Auth Utilities  
+  
+from flask_jwt_extended import JWTManager
+from flask_bcrypt import Bcrypt
+
+bcrypt = Bcrypt()
+jwt = JWTManager()
 
 # API Response Utilities
 
@@ -161,3 +176,118 @@ def validation_error_response(errors):
         status_code=422,
         details=errors
     )
+    
+
+#email sending utils
+    
+    
+    
+def send_email(receiver_email, subject, html = ""):
+    """
+    Send an email with HTML content.
+    
+    Args:
+        receiver_email (str): The recipient's email address
+        subject (str): The email subject
+        html (str): The HTML content of the email
+        
+    Returns:
+        tuple: (response_data, status_code) - HTTP status code
+    """
+    
+    # Validate input parameters
+    if not receiver_email or not subject:
+        return {
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Receiver email and subject are required",
+                "details": "Both receiver_email and subject parameters must be provided"
+            }
+        }, 400  # Bad Request
+
+    # Validate email format (basic validation)
+
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, receiver_email):
+        return {
+            "error": {
+                "code": "INVALID_EMAIL_FORMAT",
+                "message": "Invalid email format",
+                "details": f"The email address '{receiver_email}' is not in a valid format"
+            }
+        }, 400  # Bad Request
+
+
+    sender_email =  os.environ.get('EMAIL', 'example@email.com')   
+    password = os.environ.get('EMAIL_PASS', '1234567890')
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = sender_email
+    message["To"] = receiver_email
+
+    # Turn these into plain/html MIMEText objects
+    part = MIMEText(html, "html")
+
+    # Add HTML/plain-text parts to MIMEMultipart message
+    # The email client will try to render the last part first
+    message.attach(part)
+
+    # Create secure connection with server and send email
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(sender_email, password)
+            server.sendmail(
+                sender_email, receiver_email, message.as_string()
+            )
+        
+        return {
+            "data": {
+                "email_id": f"email_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "recipient": receiver_email,
+                "subject": subject,
+                "sent_at": datetime.now().isoformat(),
+                "status": "sent"
+            },
+            "message": "Email sent successfully"
+        }, 200  # OK
+        
+    except smtplib.SMTPAuthenticationError as e:
+        return {
+            "error": {
+                "code": "AUTHENTICATION_FAILED",
+                "message": "Failed to authenticate with email server",
+                "details": "Invalid email credentials or authentication method"
+            }
+        }, 401  # Unauthorized
+        
+    except smtplib.SMTPRecipientsRefused as e:
+        return {
+            "error": {
+                "code": "RECIPIENT_REFUSED",
+                "message": "Recipient email address was refused by the server",
+                "details": f"The email address '{receiver_email}' was rejected by the SMTP server"
+            }
+        }, 422  # Unprocessable Entity
+        
+    except smtplib.SMTPException as e:
+        return {
+            "error": {
+                "code": "SMTP_ERROR",
+                "message": "SMTP server error occurred",
+                "details": str(e)
+            }
+        }, 502  # Bad Gateway
+        
+    except Exception as e:
+        return {
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred while sending email",
+                "details": str(e)
+            }
+        }, 500  # Internal Server Error
+        
+        
+        
