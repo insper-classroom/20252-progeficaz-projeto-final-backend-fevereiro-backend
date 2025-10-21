@@ -28,6 +28,11 @@ def update_thread(thread_id):
     data = request.get_json() or {}
     return vi.update_thread_by_id(thread_id, data)
 
+@threads_bp.route('/threads/<thread_id>', methods=['DELETE'])
+def delete_thread(thread_id):
+    """Delete a thread and all its posts"""
+    return vi.delete_thread_by_id(thread_id)
+
 
 # POSTS endpoints
 
@@ -47,3 +52,8 @@ def update_post(post_id):
     """Update a post's content or author"""
     data = request.get_json() or {}
     return vi.update_post_by_id(post_id, data)
+
+@threads_bp.route('/posts/<post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    """Delete a specific post"""
+    return vi.delete_post_by_id(post_id)

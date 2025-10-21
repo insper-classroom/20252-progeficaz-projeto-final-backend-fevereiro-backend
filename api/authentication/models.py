@@ -1,13 +1,22 @@
-from mongoengine import Document
+from mongoengine import Document, StringField
 
-class UserBase(Document):
-    """Base user model"""
-    pass
+class User(Document):
+    """User model"""
+    username = StringField(required=True, unique=True)
+    email = StringField(required=True, unique=True)
+    password = StringField(required=True)
 
-class UserAdmin(UserBase):
-    """admin user model"""
-    pass
+    meta = {
+        "collection": "users",
+        "allow_inheritance": True
+    }
 
-class UserStudent(UserBase):
-    """student user model"""
+    def to_dict(self):
+
+        return {
+            "id": str(self.id),
+            "username": self.username,
+            "email": self.email,
+        }
+
     pass
