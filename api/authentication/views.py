@@ -58,7 +58,6 @@ def login(data: dict) -> api_response:
 
     if errors:
         return validation_error_response(errors)
-    print("login successful for user:", user.id)
     token = create_access_token(identity=user.id.__str__())
     return success_response(data={"access_token": token}, message="Login bem sucedido")
 
