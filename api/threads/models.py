@@ -1,8 +1,10 @@
-from mongoengine import Document, StringField, DateTimeField, ReferenceField, ListField, IntField
+from mongoengine import Document, StringField, DateTimeField, ReferenceField, ListField, IntField, ReferenceField
 import mongoengine as me
 from core.utils import get_brasilia_now, utc_to_brasilia
+from api.authentication.models import User
 
 class Thread(Document): #perguntas
+    author = ReferenceField(User, required=True)
     title = StringField(max_length=200, required=True)
     description = StringField(max_length=500)  # Optional description field
     
@@ -34,6 +36,7 @@ class Thread(Document): #perguntas
         brasilia_time = utc_to_brasilia(self.created_at)
         return {
             'id': str(self.id),
+            'author': self.author.username,
             'title': self.title,
             'description': self.description,
             'semester': self.semester,
@@ -48,7 +51,7 @@ class Thread(Document): #perguntas
 
 class Post(Document): #respostas
     thread = ReferenceField(Thread, required=True)
-    author = StringField(max_length=100, required=True, default='Anonymous')
+    author = ReferenceField(User, required=True)
     content = StringField(required=True)
     upvotes = IntField(default=0, min_value=0)
     downvotes = IntField(default=0)
@@ -72,7 +75,7 @@ class Post(Document): #respostas
         return {
             'id': str(self.id),
             'thread_id': str(self.thread.id),
-            'author': self.author,
+            'author': self.author.username,
             'content': self.content,
             'upvotes': self.upvotes,
             'downvotes': self.downvotes,
