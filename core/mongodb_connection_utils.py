@@ -40,8 +40,9 @@ def test_mongodb_connection(uri=None, timeout=10):
     }
     
     try:
-        # Disconnect any existing connections
-        me.disconnect()
+        # Use a temporary, separate connection alias to avoid interfering
+        # with the global connection managed by the app/tests.
+        alias = f"health-check-{time.time()}"
         
         # Measure connection time
         start_time = time.time()
@@ -49,6 +50,7 @@ def test_mongodb_connection(uri=None, timeout=10):
         # Attempt connection with timeout
         connection = me.connect(
             host=uri,
+            alias=alias,
             serverSelectionTimeoutMS=timeout * 1000,
             connectTimeoutMS=timeout * 1000,
             socketTimeoutMS=timeout * 1000
@@ -57,12 +59,12 @@ def test_mongodb_connection(uri=None, timeout=10):
         connection_time = time.time() - start_time
         
         # Get server information
-        db = connection.get_database()
+        db = me.get_db(alias)
         server_info = db.client.server_info()
         
         # Test a simple query
         query_start = time.time()
-        Thread.objects().limit(1)
+        db.command('ping') # Use a lightweight command
         query_time = time.time() - query_start
         
         # Populate result
@@ -121,7 +123,7 @@ def test_mongodb_connection(uri=None, timeout=10):
     
     finally:
         try:
-            me.disconnect()
+            me.disconnect(alias=alias)
         except:
             pass
 
@@ -152,8 +154,10 @@ def test_database_operations(uri=None):
     }
     
     try:
+        # Use a temporary, separate connection alias
+        alias = f"db-ops-check-{time.time()}"
         # Connect to database
-        me.connect(host=uri, serverSelectionTimeoutMS=10000)
+        me.connect(host=uri, alias=alias, serverSelectionTimeoutMS=10000)
         
         # Test CREATE
         brasilia_now = utc_to_brasilia(datetime.utcnow())
@@ -208,8 +212,8 @@ def test_database_operations(uri=None):
         try:
             # Clean up any remaining test data
             Thread.objects(title__contains="Test Thread").delete()
-            Post.objects(author="Test User").delete()
-            me.disconnect()
+            Post.objects(author="Test User").delete() # This might fail if the main connection is different
+            me.disconnect(alias=alias)
         except:
             pass
     

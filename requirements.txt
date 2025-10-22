@@ -7,4 +7,4 @@ requests==2.31.0
 pytz==2023.3
 flask-jwt-extended==4.7.1
 flask-bcrypt==1.0.1
-
+pytest==7.4.3

@@ -3,6 +3,7 @@ from api.threads.models import Thread, Post
 from mongoengine.errors import DoesNotExist, ValidationError
 from core.types import api_response
 from core.utils import success_response, error_response, validation_error_response
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 # THREADS views
 def list_threads() -> api_response:
@@ -37,8 +38,10 @@ def get_thread_by_id(thread_id: str) -> api_response:
     except Exception as e:
         return error_response('Invalid thread ID', 400)
 
+@jwt_required()
 def create_thread(data: dict) -> api_response:
     """Create a new thread"""
+    current_user = get_jwt_identity()
     
     title = data.get('title', '').strip()
     description = data.get('description', '').strip() # Optional description field
@@ -58,8 +61,13 @@ def create_thread(data: dict) -> api_response:
     if description and len(description) > 500:
         errors['description'] = 'Description must be less than 500 characters'
     
-    if semester < 1 or semester > 10:
-        errors['semester'] = 'Semester must be between 1 and 10'
+    try:
+        # Handle both "2024.1" and integer formats
+        semester_int = int(str(semester).split('.')[0])
+        if not 1 <= semester_int <= 10:
+            errors['semester'] = 'Semester must be between 1 and 10'
+    except (ValueError, IndexError):
+        errors['semester'] = 'Semester must be a valid number'
     
     if errors:
         return validation_error_response(errors)
@@ -79,8 +87,11 @@ def create_thread(data: dict) -> api_response:
     except Exception as e:
         return error_response("Failed to create thread", 500)
 
+@jwt_required()
 def update_thread_by_id(thread_id: str, data: dict) -> api_response:
     """Update a thread's title or description"""
+    current_user = get_jwt_identity()
+
     try:
         thread = Thread.objects.get(id=thread_id)
         
@@ -108,8 +119,10 @@ def update_thread_by_id(thread_id: str, data: dict) -> api_response:
         return jsonify({'error': 'Invalid thread ID'}), 400
 
 
+@jwt_required()
 def delete_thread_by_id(thread_id: str) -> api_response:
     """Delete a thread and all its associated posts"""
+    current_user = get_jwt_identity()
     try:
         thread = Thread.objects.get(id=thread_id)
         
@@ -138,10 +151,13 @@ def get_post_by_id(post_id: str) -> api_response:
     except Exception as e:
         return error_response('Invalid post ID', 400)
 
+@jwt_required()
 def create_post(thread_id: str, data: dict) -> api_response:
     """Create a new post in a thread"""
+    current_user = get_jwt_identity()
     try:
         thread = Thread.objects.get(id=thread_id)
+        # TODO: Consider using the user from the JWT token as the author
         author = data.get('author') or 'Anonymous'
         content = data.get('content')
         if not content:
@@ -157,8 +173,11 @@ def create_post(thread_id: str, data: dict) -> api_response:
     except Exception as e:
         return error_response('Invalid thread ID', 400)
 
+@jwt_required()
 def update_post_by_id(post_id: str, data: dict) -> api_response:
     """Update a post's content or author"""
+    current_user = get_jwt_identity()
+
     try:
         post = Post.objects.get(id=post_id)
         # Update fields if provided
@@ -177,8 +196,11 @@ def update_post_by_id(post_id: str, data: dict) -> api_response:
         return error_response('Invalid thread ID', 400)
 
 
+@jwt_required()
 def delete_post_by_id(post_id: str) -> api_response:
     """Delete a specific post"""
+    current_user = get_jwt_identity()
+
     try:
         post = Post.objects.get(id=post_id)
         post.delete()

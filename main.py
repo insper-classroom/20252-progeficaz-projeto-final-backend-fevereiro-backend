@@ -35,7 +35,7 @@ mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/forum_db'
 
 # Connect to MongoDB
 try:
-    me.connect(host=mongodb_uri)
+    me.connect(host=mongodb_uri, uuidRepresentation='standard')
     print(f"Connected to MongoDB: {mongodb_uri}")
 except Exception as e:
     print(f"Failed to connect to MongoDB: {e}")
