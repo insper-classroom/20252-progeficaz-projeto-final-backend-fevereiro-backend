@@ -7,6 +7,11 @@ load_dotenv(".env")
 def test_api():
     print("Testing Forum API...")
     
+    # Initialize variables for test tracking
+    thread_id = None
+    post_id = None
+    token = None
+    
     try:
         # Test 1: Test root endpoint
         print("\n1. Testing GET /")
@@ -254,6 +259,49 @@ def test_api():
                     print(f"Final thread upvotes: {vote_result.get('upvotes', 0)}")
                     print(f"Final thread downvotes: {vote_result.get('downvotes', 0)}")
                     print(f"Final thread score: {vote_result.get('score', 0)}")
+        
+        # Test Pin/Unpin Functionality
+        if thread_id and post_id and token:
+            print("\n12. Testing POST pin functionality")
+            
+            # Test pinning without being thread owner (should fail if not owner)
+            print("\n12.1. Testing pin post as thread owner")
+            response = requests.post(f'http://localhost:5000/api/posts/{post_id}/pin', 
+                                   headers={'Authorization': f'Bearer {token}'})
+            print(f"Pin post - Status: {response.status_code}")
+            if response.status_code == 200:
+                pin_result = response.json()
+                print(f"✅ Post pinned successfully")
+                print(f"Post pinned status: {pin_result.get('pinned', False)}")
+                
+                # Verify the post is now pinned by getting the thread
+                print("\n12.2. Verifying pinned post appears first")
+                response = requests.get(f'http://localhost:5000/api/threads/{thread_id}')
+                if response.status_code == 200:
+                    thread_data = response.json()
+                    if thread_data.get('posts'):
+                        first_post = thread_data['posts'][0]
+                        if first_post.get('pinned', False):
+                            print("✅ Pinned post appears first in thread")
+                        else:
+                            print("❌ Pinned post is not appearing first")
+                    
+                # Test unpinning the post
+                print("\n12.3. Testing unpin post")
+                response = requests.delete(f'http://localhost:5000/api/posts/{post_id}/pin', 
+                                         headers={'Authorization': f'Bearer {token}'})
+                print(f"Unpin post - Status: {response.status_code}")
+                if response.status_code == 200:
+                    unpin_result = response.json()
+                    print(f"✅ Post unpinned successfully")
+                    print(f"Post pinned status: {unpin_result.get('pinned', False)}")
+            
+            # Test pinning without authentication (should fail)
+            print("\n12.4. Testing pin post without authentication")
+            response = requests.post(f'http://localhost:5000/api/posts/{post_id}/pin')
+            print(f"Pin without auth - Status: {response.status_code}")
+            if response.status_code == 401:
+                print("✅ Correctly requires authentication for pinning")
         
         print("\n✅ API tests completed successfully!")
         

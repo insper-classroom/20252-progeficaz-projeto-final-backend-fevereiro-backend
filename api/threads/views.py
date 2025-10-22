@@ -31,7 +31,7 @@ def get_thread_by_id(thread_id: str) -> api_response:
     """Get a specific thread by ID along with its posts"""
     try:
         thread = Thread.objects.get(id=thread_id)
-        posts = Post.objects(thread=thread).order_by('created_at')
+        posts = Post.objects(thread=thread).order_by('-pinned', 'created_at')  # Pinned posts first
         data = thread.to_dict()
         data['posts'] = [p.to_dict() for p in posts]
         return success_response(data=data, status_code=200)
@@ -426,3 +426,56 @@ def remove_thread_vote_by_id(thread_id: str, current_user: str) -> api_response:
         return error_response('Thread not found', 404)
     except Exception as e:
         return error_response('Invalid thread ID or vote removal failed', 400)
+
+
+# POST PIN views
+
+def pin_post_by_id(post_id: str, current_user: str) -> api_response:
+    """Pin a post (only thread owner can pin posts)"""
+    try:
+        user = User.objects.get(id=current_user)
+        post = Post.objects.get(id=post_id)
+        thread = post.thread
+        
+        # Check if current user is the thread owner
+        if thread.author != user:
+            return error_response('Only the thread owner can pin posts', 403)
+        
+        # Pin the post
+        post.pinned = True
+        post.save()
+        
+        return success_response(
+            data={'pinned': post.pinned},
+            message='Post pinned successfully',
+            status_code=200
+        )
+    except DoesNotExist:
+        return error_response('Post not found', 404)
+    except Exception as e:
+        return error_response('Invalid post ID or pin failed', 400)
+
+def unpin_post_by_id(post_id: str, current_user: str) -> api_response:
+    """Unpin a post (only thread owner can unpin posts)"""
+    try:
+        user = User.objects.get(id=current_user)
+        post = Post.objects.get(id=post_id)
+        thread = post.thread
+        
+        # Check if current user is the thread owner
+        if thread.author != user:
+            return error_response('Only the thread owner can unpin posts', 403)
+        
+        # Unpin the post
+        post.pinned = False
+        post.save()
+        
+        return success_response(
+            data={'pinned': post.pinned},
+            message='Post unpinned successfully',
+            status_code=200
+        )
+    except DoesNotExist:
+        return error_response('Post not found', 404)
+    except Exception as e:
+        return error_response('Invalid post ID or unpin failed', 400)

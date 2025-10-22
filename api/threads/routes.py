@@ -119,3 +119,20 @@ def remove_thread_vote(thread_id):
     """Remove user's vote from a specific thread"""
     current_user = get_jwt_identity()
     return vi.remove_thread_vote_by_id(thread_id, current_user)
+
+
+# POST PIN endpoints
+
+@threads_bp.route('/posts/<post_id>/pin', methods=['POST'])
+@jwt_required()
+def pin_post(post_id):
+    """Pin a post (only thread owner can pin posts)"""
+    current_user = get_jwt_identity()
+    return vi.pin_post_by_id(post_id, current_user)
+
+@threads_bp.route('/posts/<post_id>/pin', methods=['DELETE'])
+@jwt_required()
+def unpin_post(post_id):
+    """Unpin a post (only thread owner can unpin posts)"""
+    current_user = get_jwt_identity()
+    return vi.unpin_post_by_id(post_id, current_user)
