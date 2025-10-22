@@ -1,43 +1,70 @@
-from flask import request, jsonify
+from flask import jsonify
+from flask_jwt_extended import create_access_token
+
 from api.authentication.models import User
 from core.types import api_response
-from flask_jwt_extended import create_access_token
-from core.utils import bcrypt
+from core.utils import bcrypt, error_response, success_response, validation_error_response
 
 
 def register(data: dict) -> api_response:
-
-    username = data.get("username")
     password = data.get("password")
     email = data.get("email")
-    matricula = data.get("matricula")
-    name = data.get("name")
 
-    #validando usuario
+    # Validando informações faltantes
+    errors = {}
+    if not all([email, password]):
+        errors["fields"] = "Campos obrigatórios: email, password"
+
+    # Validando email
+    email_lower = email.lower()
+    if not isinstance(email, str):
+        errors["email"] = "Email inválido"  
+    
+    elif not (
+        email_lower.endswith("@al.insper.edu.br")
+        or email_lower.endswith("@insper.edu.br")
+    ):
+        errors["email"] = "Email deve ser do Insper"
+
+    # Extraindo username do email (parte antes do @)
+    username = email.split("@")[0]
+
+    # Validando se usuario já existe
     if User.objects(email=email):
-        return jsonify({'msg': 'Usuario ja existe'}), 400
-    
-    #validando informações faltantes
-    if not all([name, email, username, matricula, password]):
-        return jsonify({"msg": "Campos obrigatórios: name, email, username, matricula, password"}), 400
-    
-    #validando email
-    if not isinstance(email, str) or not email.lower().endswith("@al.insper.edu.br"):
-        return jsonify({"msg": "Utilize seu email Insper"}), 400
-    
-    hashed = bcrypt.generate_password_hash(password).decode('utf-8')
-    new_user = User(username=username, password=hashed, email=email, matricula=matricula, name=name)
-    new_user.save()
-    return jsonify({'msg': 'Usuario cadastrado com sucesso!'}), 201
+        errors["email"] = "Usuario ja existe"
 
-def login(data: dict) -> api_response: 
-    username = data.get("username")
+    if errors:
+        return validation_error_response(errors)
+
+    hashed = bcrypt.generate_password_hash(password).decode("utf-8")
+    new_user = User(username=username, password=hashed, email=email)
+    new_user.save()
+    return success_response(message="Usuario registrado com sucesso", status_code=201)
+
+
+def login(data: dict) -> api_response:
+    email = data.get("email")
     password = data.get("password")
 
-    #validando usuario e senha
-    user = User.objects(username=username).first()
+    errors = {}
+    # Validando informações faltantes
+    if not all([email, password]):
+        errors["fields"] = "Campos obrigatórios: email, password"
+
+    # Validando usuario e senha
+    user = User.objects(email=email).first()
     if not user or not bcrypt.check_password_hash(user.password, password):
-        return jsonify({"msg": "Usuário ou senha inválidos"}), 401
-    
-    token = create_access_token(identity=username)
-    return jsonify(access_token=token), 200
+        errors["credentials"] = "Email ou senha inválidos"
+
+    if errors:
+        return validation_error_response(errors)
+    token = create_access_token(identity=user.id.__str__())
+    return success_response(data={"access_token": token}, message="Login bem sucedido")
+
+def me(current_user) -> api_response:
+    """Get current authenticated user's info."""
+    try:
+        user = User.objects.get(id=current_user)
+        return success_response(data=user.to_dict())
+    except User.DoesNotExist:
+        return error_response("User not found", 404)

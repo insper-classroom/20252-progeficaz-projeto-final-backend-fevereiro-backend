@@ -14,3 +14,8 @@ def get_filters_config():
 def get_filters_by_type(filter_type):
     """Get filter options by type."""
     return vi.get_filters_by_type(filter_type, request)
+
+@search_bp.route('/search/threads', methods=['GET'])
+def search_threads():
+    """Search threads by title."""
+    return vi.search_threads(request)

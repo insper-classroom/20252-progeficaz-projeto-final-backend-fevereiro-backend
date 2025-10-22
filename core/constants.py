@@ -38,34 +38,48 @@ SUBJECTS: dict[str, dict[int, list[str]]] = {
     },
     # Administração
     "adm": {
-        1: ["Matemática Aplicada", "Introdução à Administração", "Comunicação Empresarial"],
+        1: [
+            "Matemática Aplicada",
+            "Introdução à Administração",
+            "Comunicação Empresarial",
+        ],
         2: ["Contabilidade Geral", "Economia", "Estatística"],
         3: ["Administração Financeira", "Marketing", "Gestão de Pessoas"],
         4: ["Administração de Produção", "Logística", "Direito Empresarial"],
-        5: ["Planejamento Estratégico", "Administração de Projetos", "Comportamento Organizacional"],
-    }
+        5: [
+            "Planejamento Estratégico",
+            "Administração de Projetos",
+            "Comportamento Organizacional",
+        ],
+    },
 }
 
-DEFAULT_SUBJECTS: list[str] = ["Matemática Geral", "Português", "História", "Filosofia", "Educação Física"]
+DEFAULT_SUBJECTS: list[str] = [
+    "Matemática Geral",
+    "Português",
+    "História",
+    "Filosofia",
+    "Educação Física",
+]
 
 FILTER_CONFIG: dict[str, dict] = {
     "semester": {
         "required": True,
         "multiple": False,
         "depends_on": [],
-        "options": SEMESTERS
+        "options": SEMESTERS,
     },
     "course": {
         "required": False,
         "multiple": True,
         "depends_on": [],
-        "options": COURSES
+        "options": COURSES,
     },
     "subject": {
         "required": True,
         "multiple": True,
         "depends_on": ["course", "semester"],
         "searchable": True,
-        "options": SUBJECTS
-    }
+        "options": SUBJECTS,
+    },
 }
