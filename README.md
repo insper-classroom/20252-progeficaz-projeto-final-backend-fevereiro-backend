@@ -40,11 +40,14 @@ This is a minimal Flask REST API for the forum application. It uses MongoDB as t
    # cp .env.example .env  # On macOS/Linux
    ```
 
-4. Edit .env file and set your MONGODB_URI and OPENAI_API_KEY:
+4. Edit .env file and set your configuration:
    ```
    MONGODB_URI=your_mongodb_connection_string
    OPENAI_API_KEY=your_openai_api_key
+   ALLOWED_IPS=127.0.0.1,::1,YOUR_IP_ADDRESS
    ```
+
+   **Security Note**: The server now includes IP filtering for enhanced security. Only requests from IP addresses listed in `ALLOWED_IPS` will be accepted. By default, only localhost (127.0.0.1 and ::1) is allowed. To allow access from your specific IP address, add it to the comma-separated list in the .env file.
 
 5. Run the app:
    ```bash
@@ -134,6 +137,23 @@ Posts have the following structure:
   "created_at": "2025-01-01T00:00:00.000000"
 }
 ```
+
+## Security Features
+
+### IP Address Filtering
+
+The server includes IP filtering for enhanced security. Only requests from IP addresses listed in the `ALLOWED_IPS` environment variable will be accepted.
+
+**Configuration:**
+- Edit your `.env` file and set `ALLOWED_IPS` to a comma-separated list of allowed IP addresses
+- Default: `127.0.0.1,::1` (localhost only)
+- Example: `ALLOWED_IPS=127.0.0.1,::1,192.168.1.100,203.0.113.1`
+
+**Important Notes:**
+- Health check endpoints (`/health/*`) are exempt from IP filtering to allow monitoring
+- If you're behind a proxy or NAT, you may need to configure your public IP
+- For local network access, use your local IP address
+- For internet access, use your public IP address
 
 ## Content Moderation
 

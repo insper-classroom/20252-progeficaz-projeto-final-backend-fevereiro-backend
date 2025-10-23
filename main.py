@@ -7,7 +7,7 @@ import os
 # Mongo DB setup
 import mongoengine as me
 from dotenv import load_dotenv
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, abort
 from flask_cors import CORS
 
 # JSON handling
@@ -25,6 +25,41 @@ bcrypt.init_app(app)
 
 # authentication requirements
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
+# IP filtering configuration
+ALLOWED_IPS = os.getenv("ALLOWED_IPS", "127.0.0.1,::1").split(",")
+ALLOWED_IPS = [ip.strip() for ip in ALLOWED_IPS]  # Remove any whitespace
+
+def get_client_ip():
+    """Get the real client IP address, considering proxy headers"""
+    # Check for common proxy headers
+    if request.environ.get('HTTP_X_FORWARDED_FOR'):
+        # X-Forwarded-For can contain multiple IPs, take the first one
+        return request.environ['HTTP_X_FORWARDED_FOR'].split(',')[0].strip()
+    elif request.environ.get('HTTP_X_REAL_IP'):
+        return request.environ['HTTP_X_REAL_IP']
+    elif request.environ.get('HTTP_X_FORWARDED'):
+        return request.environ['HTTP_X_FORWARDED']
+    elif request.environ.get('HTTP_X_CLUSTER_CLIENT_IP'):
+        return request.environ['HTTP_X_CLUSTER_CLIENT_IP']
+    else:
+        return request.environ.get('REMOTE_ADDR', '')
+
+@app.before_request
+def limit_remote_addr():
+    """Filter requests by IP address"""
+    client_ip = get_client_ip()
+    
+    # Skip IP filtering for health check endpoints to allow monitoring
+    if request.endpoint and request.endpoint.startswith('health'):
+        return
+    
+    print(f"Request from IP: {client_ip}")
+    print(f"Allowed IPs: {ALLOWED_IPS}")
+    
+    if client_ip not in ALLOWED_IPS:
+        print(f"Access denied for IP: {client_ip}")
+        abort(403)  # Forbidden
 
 # MongoDB configuration
 mongodb_uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
@@ -63,6 +98,11 @@ app.register_blueprint(auth_bp, url_prefix="/api/auth")
 
 
 # Global error handlers
+@app.errorhandler(403)
+def access_forbidden(error):
+    return jsonify({"error": "Access forbidden"}), 403
+
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Resource not found"}), 404
