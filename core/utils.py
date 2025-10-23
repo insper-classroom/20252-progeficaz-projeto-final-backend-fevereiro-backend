@@ -10,7 +10,6 @@ from email.mime.text import MIMEText
 import pytz
 from dotenv import load_dotenv
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager
 
 load_dotenv()
 
@@ -166,13 +165,6 @@ def update_index_json() -> None:
         json.dump(json_data, f, indent=4)
     return
 
-
-# Auth Utilities
-
-
-bcrypt = Bcrypt()
-jwt = JWTManager()
-
 # API Response Utilities
 
 
@@ -314,3 +306,11 @@ def send_email(receiver_email, subject, html=""):
                 "details": str(e),
             }
         }, 500  # Internal Server Error
+
+
+
+# Auth Utilities
+from flask_jwt_extended import JWTManager
+
+bcrypt = Bcrypt()
+jwt = JWTManager()

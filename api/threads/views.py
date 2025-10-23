@@ -42,6 +42,7 @@ def get_thread_by_id(thread_id: str) -> api_response:
 
 def create_thread(data: dict, current_user: str) -> api_response:
     """Create a new thread"""
+    current_user = get_jwt_identity()
     
     title = data.get('title', '').strip()
     description = data.get('description', '').strip() # Optional description field
@@ -52,21 +53,25 @@ def create_thread(data: dict, current_user: str) -> api_response:
     subjects = data.get('subjects', ['Geral'])  # Default subject
     
     # Validation
-    errors = {}
+    
+    # Handle both "2024.1" and integer formats
+    semester = int(str(semester).split('.')[1])
+
     if not title:
-        errors['title'] = 'Title is required'
+        return error_response('Title is required', 400)
     elif len(title) > 200:
-        errors['title'] = 'Title must be less than 200 characters'
-    
+        return error_response('Title must be less than 200 characters', 400)
+
     if description and len(description) > 500:
-        errors['description'] = 'Description must be less than 500 characters'
+        return error_response('Description must be less than 500 characters', 400)
     
-    if semester < 1 or semester > 10:
-        errors['semester'] = 'Semester must be between 1 and 10'
-    
-    if errors:
-        return validation_error_response(errors)
-    
+    try:
+        
+        if not (1 <= semester <= 10):
+            return error_response(f'Semester must be between 1 and 10', 400)
+    except (ValueError, IndexError):
+        return error_response('Semester must be a valid number', 400)
+
     # # Verificar moderação de conteúdo
     # is_safe, moderation_message = verificar_thread(title, description)
     # if not is_safe:
@@ -134,6 +139,7 @@ def update_thread_by_id(thread_id: str, data: dict, current_user: str) -> api_re
 
 def delete_thread_by_id(thread_id: str, current_user: str) -> api_response:
     """Delete a thread and all its associated posts"""
+    current_user = get_jwt_identity()
     try:
         user = User.objects.get(id=current_user)
         thread = Thread.objects.get(id=thread_id, author=user)
@@ -164,13 +170,14 @@ def get_post_by_id(post_id: str) -> api_response:
 
 def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
     """Create a new post in a thread"""
+    current_user = get_jwt_identity()
     try:
         thread = Thread.objects.get(id=thread_id)
         author = User.objects.get(id=current_user)  
         content = data.get('content')
         if not content:
             return error_response('content required', 400)
-        
+
         # # Verificar moderação do conteúdo
         # is_safe, moderation_message = verificar_post(content)
         # if not is_safe:
@@ -182,12 +189,14 @@ def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
     except DoesNotExist:
         return error_response('Thread not found', 404)
     except ValidationError as e:
-        return error_response(str(e), 400)
+        return error_response("Invalid thread ID", 400)
     except Exception as e:
         return error_response('Invalid thread ID', 400)
 
 def update_post_by_id(post_id: str, data: dict, current_user: str) -> api_response:
     """Update a post's content or author"""
+    current_user = get_jwt_identity()
+
     try:
         user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id, author=user)
@@ -217,6 +226,8 @@ def update_post_by_id(post_id: str, data: dict, current_user: str) -> api_respon
 
 def delete_post_by_id(post_id: str, current_user: str) -> api_response:
     """Delete a specific post"""
+    current_user = get_jwt_identity()
+
     try:
         user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id, author=user)

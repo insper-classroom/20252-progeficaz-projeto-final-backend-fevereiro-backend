@@ -4,7 +4,7 @@ from api.health import views as vi
 health_bp = Blueprint('health', __name__)
 
 
-@health_bp.route('/')
+@health_bp.route('/', strict_slashes=False)
 def health():
     """Health check endpoint to verify DB connection"""
     return vi.health()
