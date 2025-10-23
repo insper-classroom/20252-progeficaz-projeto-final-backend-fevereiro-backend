@@ -26,7 +26,9 @@ def test_create_thread_success(client, registered_user_token, thread_data):
     """Test successful creation of a thread."""
     headers = {'Authorization': f'Bearer {registered_user_token}'}
     response = client.post('/api/threads', json=thread_data, headers=headers)
-    
+    # DEBUGGING OUTPUT
+    print("Response data:", response.get_json())
+
     assert response.status_code == 201
     assert response.json['title'] == thread_data['title']
     assert 'id' in response.json
@@ -49,7 +51,7 @@ def test_create_thread_missing_title(client, registered_user_token, thread_data)
     del invalid_data['title']
     response = client.post('/api/threads', json=invalid_data, headers=headers)
     assert response.status_code == 400
-    assert response.json['details']['title'] == 'Title is required'
+    assert response.json == {'error': 'Title is required'}
 
 def test_get_all_threads(client, registered_user_token, thread_data):
     """Test retrieving all threads."""
@@ -105,7 +107,9 @@ def test_update_thread_unauthorized(client, thread_data):
     # The User creation was failing because 'name' and 'matricula' are required.
     # However, we don't even need to create a user for this test.
     # Just create a thread directly.
-    thread = Thread(title="Unauthorized Thread", description="Desc").save()
+    User(username="thread_creator", email="creator@example.com", password="password").save()
+    other_user = User.objects.get(username="thread_creator")
+    thread = Thread(title="Unauthorized Thread", description="Desc", author=other_user).save()
     response = client.put(f'/api/threads/{thread.id}', json={"title": "New Title"})
     assert response.status_code == 401
 
@@ -120,13 +124,13 @@ def test_create_post_success(client, registered_user_token, thread_data, post_da
     assert response.status_code == 201
     assert response.json['content'] == post_data['content']
     assert 'id' in response.json
-    assert response.json['thread'] == thread_id
+    assert response.json["thread_id"] == thread_id
     
     # Verify post is in the database and linked to the thread
     post = Post.objects.get(id=response.json['id'])
     assert post is not None
     assert post.content == post_data['content']
-    assert post.thread.id == thread_id
+    assert post.thread.id.__str__() == thread_id
 
 def test_create_post_non_existent_thread(client, registered_user_token, post_data):
     """Test creating a post for a non-existent thread."""

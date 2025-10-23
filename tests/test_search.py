@@ -42,3 +42,6 @@ def test_get_specific_filter_type(client):
     response = client.get('/api/filters/config?type=subjects')
     assert response.status_code == 200
     assert isinstance(response.json, dict)
+
+
+# TODO: Add more specific tests once the search functionality is defined.

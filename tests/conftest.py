@@ -69,10 +69,8 @@ def cleanup_db_after_each_test(app):
 def auth_data():
     """Fixture for common authentication data."""
     return {
-        "name": "Test User",
         "email": "test@al.insper.edu.br",
-        "username": "testuser",
-        "matricula": "123456",
+        "username": "test",
         "password": "password123"
     }
 
@@ -81,8 +79,9 @@ def registered_user_token(client, auth_data):
     """Fixture to register a user and return their JWT token."""
     client.post('/api/auth/register', json=auth_data)
     login_data = {
-        "username": auth_data['username'],
+        "email": auth_data['email'],
         "password": auth_data['password']
     }
     response = client.post('/api/auth/login', json=login_data)
-    return response.json['access_token']
+    data = response.get_json()
+    return data.get('access_token')

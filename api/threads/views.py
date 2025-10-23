@@ -53,26 +53,25 @@ def create_thread(data: dict, current_user: str) -> api_response:
     subjects = data.get('subjects', ['Geral'])  # Default subject
     
     # Validation
-    errors = {}
-    if not title:
-        errors['title'] = 'Title is required'
-    elif len(title) > 200:
-        errors['title'] = 'Title must be less than 200 characters'
     
+    # Handle both "2024.1" and integer formats
+    semester = int(str(semester).split('.')[1])
+
+    if not title:
+        return error_response('Title is required', 400)
+    elif len(title) > 200:
+        return error_response('Title must be less than 200 characters', 400)
+
     if description and len(description) > 500:
-        errors['description'] = 'Description must be less than 500 characters'
+        return error_response('Description must be less than 500 characters', 400)
     
     try:
-        # Handle both "2024.1" and integer formats
-        semester_int = int(str(semester).split('.')[0])
-        if not 1 <= semester_int <= 10:
-            errors['semester'] = 'Semester must be between 1 and 10'
+        
+        if not (1 <= semester <= 10):
+            return error_response(f'Semester must be between 1 and 10', 400)
     except (ValueError, IndexError):
-        errors['semester'] = 'Semester must be a valid number'
-    
-    if errors:
-        return validation_error_response(errors)
-    
+        return error_response('Semester must be a valid number', 400)
+
     # # Verificar moderação de conteúdo
     # is_safe, moderation_message = verificar_thread(title, description)
     # if not is_safe:
@@ -178,7 +177,7 @@ def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
         content = data.get('content')
         if not content:
             return error_response('content required', 400)
-        
+
         # # Verificar moderação do conteúdo
         # is_safe, moderation_message = verificar_post(content)
         # if not is_safe:
@@ -190,7 +189,7 @@ def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
     except DoesNotExist:
         return error_response('Thread not found', 404)
     except ValidationError as e:
-        return error_response(str(e), 400)
+        return error_response("Invalid thread ID", 400)
     except Exception as e:
         return error_response('Invalid thread ID', 400)
 
