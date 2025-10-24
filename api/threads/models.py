@@ -53,6 +53,7 @@ class Post(Document): #respostas
     thread = ReferenceField(Thread, required=True)
     author = ReferenceField(User, required=True)
     content = StringField(required=True)
+    pinned = me.BooleanField(default=False)  # Pin status for the post
     upvotes = IntField(default=0, min_value=0)
     downvotes = IntField(default=0)
     voted_users = ListField(StringField(), default=list)  # Track users who have voted
@@ -60,7 +61,7 @@ class Post(Document): #respostas
     
     meta = {
         'collection': 'posts',
-        'ordering': ['created_at']
+        'ordering': ['-pinned', 'created_at']  # Pinned posts first, then by creation date
     }
 
     @property
@@ -77,6 +78,7 @@ class Post(Document): #respostas
             'thread_id': str(self.thread.id),
             'author': self.author.username,
             'content': self.content,
+            'pinned': self.pinned,
             'upvotes': self.upvotes,
             'downvotes': self.downvotes,
             'score': self.score,

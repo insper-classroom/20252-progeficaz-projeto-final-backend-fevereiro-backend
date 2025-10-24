@@ -31,7 +31,7 @@ def get_thread_by_id(thread_id: str) -> api_response:
     """Get a specific thread by ID along with its posts"""
     try:
         thread = Thread.objects.get(id=thread_id)
-        posts = Post.objects(thread=thread).order_by('created_at')
+        posts = Post.objects(thread=thread).order_by('-pinned', 'created_at')  # Pinned posts first
         data = thread.to_dict()
         data['posts'] = [p.to_dict() for p in posts]
         return success_response(data=data, status_code=200)
@@ -248,12 +248,14 @@ def upvote_post_by_id(post_id: str, current_user: str) -> api_response:
         user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id)
 
+        user_id_str = str(user.id)
+        
         # Check if user has already voted
-        if user.id in post.voted_users:
+        if user_id_str in post.voted_users:
             return error_response('You have already voted on this post', 409)
         
         # Add user to voted list and increment upvote count
-        post.voted_users.append(user.id)
+        post.voted_users.append(user_id_str)
         post.upvotes = post.upvotes + 1
         post.save()
         
@@ -275,12 +277,14 @@ def downvote_post_by_id(post_id: str, current_user: str) -> api_response:
         user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id)
 
+        user_id_str = str(user.id)
+        
         # Check if user has already voted
-        if user.id in post.voted_users:
+        if user_id_str in post.voted_users:
             return error_response('You have already voted on this post', 409)
         
         # Add user to voted list and increment downvote count
-        post.voted_users.append(user.id)
+        post.voted_users.append(user_id_str)
         post.downvotes = post.downvotes + 1
         post.save()
         
@@ -302,12 +306,14 @@ def remove_vote_by_post_id(post_id: str, current_user: str) -> api_response:
         user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id)
         
+        user_id_str = str(user.id)
+        
         # Check if user has voted on this post
-        if user.id not in post.voted_users:
+        if user_id_str not in post.voted_users:
             return error_response('You have not voted on this post', 404)
         
         # Remove user from voted list
-        post.voted_users.remove(user.id)
+        post.voted_users.remove(user_id_str)
 
         # Since we don't track vote type, we'll decrement from upvotes first, then downvotes
         if post.upvotes > 0:
@@ -342,12 +348,14 @@ def upvote_thread_by_id(thread_id: str, current_user: str) -> api_response:
         user = User.objects.get(id=current_user)
         thread = Thread.objects.get(id=thread_id)
         
+        user_id_str = str(user.id)
+        
         # Check if user has already voted
-        if user.id in thread.voted_users:
+        if user_id_str in thread.voted_users:
             return error_response('You have already voted on this thread', 409)
         
         # Add user to voted list and increment upvote count
-        thread.voted_users.append(user.id)
+        thread.voted_users.append(user_id_str)
         thread.upvotes = thread.upvotes + 1
         thread.save()
         
@@ -369,12 +377,14 @@ def downvote_thread_by_id(thread_id: str, current_user: str) -> api_response:
         thread = Thread.objects.get(id=thread_id)
         user = User.objects.get(id=current_user)
 
+        user_id_str = str(user.id)
+        
         # Check if user has already voted
-        if user.id in thread.voted_users:
+        if user_id_str in thread.voted_users:
             return error_response('You have already voted on this thread', 409)
         
         # Add user to voted list and increment downvote count
-        thread.voted_users.append(user.id)
+        thread.voted_users.append(user_id_str)
         thread.downvotes = thread.downvotes + 1
         thread.save()
         
@@ -396,12 +406,14 @@ def remove_thread_vote_by_id(thread_id: str, current_user: str) -> api_response:
         user = User.objects.get(id=current_user)
         thread = Thread.objects.get(id=thread_id)
         
+        user_id_str = str(user.id)
+        
         # Check if user has voted on this thread
-        if user.id not in thread.voted_users:
+        if user_id_str not in thread.voted_users:
             return error_response('You have not voted on this thread', 404)
         
         # Remove user from voted list
-        thread.voted_users.remove(user.id)
+        thread.voted_users.remove(user_id_str)
         
         # Since we don't track vote type, we'll decrement from upvotes first, then downvotes
         if thread.upvotes > 0:
@@ -425,3 +437,56 @@ def remove_thread_vote_by_id(thread_id: str, current_user: str) -> api_response:
         return error_response('Thread not found', 404)
     except Exception as e:
         return error_response('Invalid thread ID or vote removal failed', 400)
+
+
+# POST PIN views
+
+def pin_post_by_id(post_id: str, current_user: str) -> api_response:
+    """Pin a post (only thread owner can pin posts)"""
+    try:
+        user = User.objects.get(id=current_user)
+        post = Post.objects.get(id=post_id)
+        thread = post.thread
+        
+        # Check if current user is the thread owner
+        if thread.author != user:
+            return error_response('Only the thread owner can pin posts', 403)
+        
+        # Pin the post
+        post.pinned = True
+        post.save()
+        
+        return success_response(
+            data={'pinned': post.pinned},
+            message='Post pinned successfully',
+            status_code=200
+        )
+    except DoesNotExist:
+        return error_response('Post not found', 404)
+    except Exception as e:
+        return error_response('Invalid post ID or pin failed', 400)
+
+def unpin_post_by_id(post_id: str, current_user: str) -> api_response:
+    """Unpin a post (only thread owner can unpin posts)"""
+    try:
+        user = User.objects.get(id=current_user)
+        post = Post.objects.get(id=post_id)
+        thread = post.thread
+        
+        # Check if current user is the thread owner
+        if thread.author != user:
+            return error_response('Only the thread owner can unpin posts', 403)
+        
+        # Unpin the post
+        post.pinned = False
+        post.save()
+        
+        return success_response(
+            data={'pinned': post.pinned},
+            message='Post unpinned successfully',
+            status_code=200
+        )
+    except DoesNotExist:
+        return error_response('Post not found', 404)
+    except Exception as e:
+        return error_response('Invalid post ID or unpin failed', 400)
