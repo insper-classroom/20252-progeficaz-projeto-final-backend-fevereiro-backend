@@ -1,5 +1,6 @@
 import pytz
 from api.threads.models import Thread
+from core.mongodb_connection_utils import test_mongodb_connection, test_database_operations, _get_unmasked_uri
 from core.mongodb_connection_utils import test_mongodb_connection, test_database_operations
 from datetime import datetime
 from core.utils import utc_to_brasilia
@@ -8,7 +9,7 @@ from core.types import api_response
 def health() -> api_response:
     try:
         # Try to perform a simple operation to check DB connection
-        Thread.objects().limit(1)
+        Thread.objects.first()
         return {'status': 'healthy', 'database': 'connected'}
     except Exception as e:
         return {'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}, 503
@@ -30,7 +31,7 @@ def detailed_health() -> api_response:
     
     if conn_result['success']:
         # Test database operations if connection is successful
-        ops_result = test_database_operations()
+        ops_result = test_database_operations(uri=_get_unmasked_uri())
         response['database_operations'] = {
             'status': 'operational' if ops_result['success'] else 'failed',
             'operations': ops_result['operations'],

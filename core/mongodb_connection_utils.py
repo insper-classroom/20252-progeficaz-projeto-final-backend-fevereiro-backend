@@ -13,6 +13,10 @@ from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from api.threads.models import Post, Thread
 from core.utils import utc_to_brasilia
 
+def _get_unmasked_uri():
+    """Helper to get the configured MongoDB URI."""
+    return os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
+
 
 def test_mongodb_connection(uri=None, timeout=10):
     """
@@ -26,7 +30,7 @@ def test_mongodb_connection(uri=None, timeout=10):
         dict: Connection test results with status and details.
     """
     if uri is None:
-        uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
+        uri = _get_unmasked_uri()
 
     is_atlas = "mongodb.net" in uri or "mongodb+srv" in uri
 
@@ -46,9 +50,6 @@ def test_mongodb_connection(uri=None, timeout=10):
         # with the global connection managed by the app/tests.
         alias = f"health-check-{time.time()}"
         
-        # Disconnect any existing connections
-        me.disconnect()
-
         # Measure connection time
         start_time = time.time()
 
@@ -145,9 +146,6 @@ def test_database_operations(uri=None):
     Returns:
         dict: Test results for CRUD operations.
     """
-    if uri is None:
-        uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
-
     result = {
         "success": False,
         "operations": {
@@ -162,9 +160,12 @@ def test_database_operations(uri=None):
 
     try:
         # Use a temporary, separate connection alias
+        # This function will now use the application's default connection
+        # which is more reliable in a test environment where conftest
+        # manages the connection.
+        # If a separate connection is truly needed, it should be managed carefully.
+
         alias = f"db-ops-check-{time.time()}"
-        # Connect to database
-        me.connect(host=uri, alias=alias, serverSelectionTimeoutMS=10000)
         
         # Test CREATE
         brasilia_now = utc_to_brasilia(datetime.utcnow())
@@ -220,7 +221,6 @@ def test_database_operations(uri=None):
             # Clean up any remaining test data
             Thread.objects(title__contains="Test Thread").delete()
             Post.objects(author="Test User").delete() # This might fail if the main connection is different
-            me.disconnect(alias=alias)
         except:
             pass
 

@@ -56,8 +56,6 @@ def cleanup_db_after_each_test(app):
     Fixture to clean up the database after each test function.
     This ensures test isolation.
     """
-    # Ensure we are connected to the test database for this function's scope.
-    me.connect(host=TEST_MONGODB_URI, uuidRepresentation='standard')
     db = me.get_db()
     yield
     # Clean up all collections after each test
@@ -81,6 +79,22 @@ def registered_user_token(client, auth_data):
     login_data = {
         "email": auth_data['email'],
         "password": auth_data['password']
+    }
+    response = client.post('/api/auth/login', json=login_data)
+    data = response.get_json()
+    return data.get('access_token')
+
+@pytest.fixture
+def other_user_token(client):
+    """Fixture to register a second user and return their JWT token."""
+    other_user_data = {
+        "email": "other@al.insper.edu.br",
+        "password": "otherpassword"
+    }
+    client.post('/api/auth/register', json=other_user_data)
+    login_data = {
+        "email": other_user_data['email'],
+        "password": other_user_data['password']
     }
     response = client.post('/api/auth/login', json=login_data)
     data = response.get_json()
