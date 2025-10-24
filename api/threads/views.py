@@ -5,6 +5,7 @@ from mongoengine.errors import DoesNotExist, ValidationError
 from core.types import api_response
 from core.utils import success_response, error_response, validation_error_response
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from typing import Literal
 # from core.moderation import verificar_thread, verificar_post
 
 # THREADS views
@@ -242,201 +243,94 @@ def delete_post_by_id(post_id: str, current_user: str) -> api_response:
 # VOTING views
 
 
-def upvote_post_by_id(post_id: str, current_user: str) -> api_response:
+def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","post"]) -> api_response:
     """Upvote a specific post (one vote per user)"""
     try:
         user = User.objects.get(id=current_user)
-        post = Post.objects.get(id=post_id)
+        
+        if obj_type == "post":
+            obj = Post.objects.get(id=obj_id)
+        elif obj_type == "thread":
+            obj = Post.objects.get(id=obj_id)
+        else:
+            return error_response('Object not found', 404)
+
+
 
         user_id_str = str(user.id)
         
+        
         # Check if user has already voted
-        if user_id_str in post.voted_users:
-            return error_response('You have already voted on this post', 409)
+        if user_id_str in obj.upvoted_users:
+            obj.upvoted_users.remove(user_id_str)
+            obj.save()
+            return success_response(
+            data={'score': obj.score},
+            message='Upvote removed successfully',
+            status_code=200
+        )
+        elif user_id_str in obj.downvoted_users:
+            obj.downvoted_users.remove(user_id_str)
+            
         
         # Add user to voted list and increment upvote count
-        post.voted_users.append(user_id_str)
-        post.upvotes = post.upvotes + 1
-        post.save()
+        obj.upvoted_users.append(user_id_str)
+        obj.save()
         
         return success_response(
-            data={'upvotes': post.upvotes, 'downvotes': post.downvotes, 'score': post.score},
-            message='Post upvoted successfully',
+            data={'score': obj.score},
+            message =f'{obj_type} upvoted successfully',
             status_code=201
         )
     except DoesNotExist:
-        return error_response('Post not found', 404)
+        return error_response(f'{obj_type} not found', 404)
     except Exception as e:
-        return error_response('Invalid post ID or voting failed', 400)
+        return error_response('Invalid obj ID or voting failed', 400)
 
 
 
-def downvote_post_by_id(post_id: str, current_user: str) -> api_response:
+def downvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","post"]) -> api_response:
     """Downvote a specific post (one vote per user)"""
     try:
         user = User.objects.get(id=current_user)
-        post = Post.objects.get(id=post_id)
+        if obj_type == "post":
+            obj = Post.objects.get(id=obj_id)
+        elif obj_type == "thread":
+            obj = Post.objects.get(id=obj_id)
+        else:
+            return error_response('Object not found', 404)
+
 
         user_id_str = str(user.id)
         
         # Check if user has already voted
-        if user_id_str in post.voted_users:
-            return error_response('You have already voted on this post', 409)
-        
-        # Add user to voted list and increment downvote count
-        post.voted_users.append(user_id_str)
-        post.downvotes = post.downvotes + 1
-        post.save()
-        
-        return success_response(
-            data={'upvotes': post.upvotes, 'downvotes': post.downvotes, 'score': post.score},
-            message='Post downvoted successfully',
-            status_code=201
-        )
-    except DoesNotExist:
-        return error_response('Post not found', 404)
-    except Exception as e:
-        return error_response('Invalid post ID or voting failed', 400)
-
-
-
-def remove_vote_by_post_id(post_id: str, current_user: str) -> api_response:
-    """Remove user's vote from a specific post"""
-    try:
-        user = User.objects.get(id=current_user)
-        post = Post.objects.get(id=post_id)
-        
-        user_id_str = str(user.id)
-        
-        # Check if user has voted on this post
-        if user_id_str not in post.voted_users:
-            return error_response('You have not voted on this post', 404)
-        
-        # Remove user from voted list
-        post.voted_users.remove(user_id_str)
-
-        # Since we don't track vote type, we'll decrement from upvotes first, then downvotes
-        if post.upvotes > 0:
-            post.upvotes = post.upvotes - 1
-            message = 'Upvote removed successfully'
-        elif post.downvotes > 0:
-            post.downvotes = post.downvotes - 1
-            message = 'Downvote removed successfully'
-        else:
-            # This shouldn't happen if data is consistent
-            message = 'Vote removed successfully'
-        
-        post.save()
-        
-        return success_response(
-            data={'upvotes': post.upvotes, 'downvotes': post.downvotes, 'score': post.score},
-            message=message,
+        if user_id_str in obj.downvoted_users:
+            obj.downvoted_users.remove(user_id_str)
+            obj.save()
+            return success_response(
+            data={'score': obj.score},
+            message='Downvote removed successfully',
             status_code=200
         )
-    except DoesNotExist:
-        return error_response('Post not found', 404)
-    except Exception as e:
-        return error_response('Invalid post ID or vote removal failed', 400)
-
-
-# THREAD VOTING views
-
-
-def upvote_thread_by_id(thread_id: str, current_user: str) -> api_response:
-    """Upvote a specific thread (one vote per user)"""
-    try:
-        user = User.objects.get(id=current_user)
-        thread = Thread.objects.get(id=thread_id)
-        
-        user_id_str = str(user.id)
-        
-        # Check if user has already voted
-        if user_id_str in thread.voted_users:
-            return error_response('You have already voted on this thread', 409)
-        
-        # Add user to voted list and increment upvote count
-        thread.voted_users.append(user_id_str)
-        thread.upvotes = thread.upvotes + 1
-        thread.save()
-        
-        return success_response(
-            data={'upvotes': thread.upvotes, 'downvotes': thread.downvotes, 'score': thread.score},
-            message='Thread upvoted successfully',
-            status_code=201
-        )
-    except DoesNotExist:
-        return error_response('Thread not found', 404)
-    except Exception as e:
-        return error_response('Invalid thread ID or voting failed', 400)
-
-
-
-def downvote_thread_by_id(thread_id: str, current_user: str) -> api_response:
-    """Downvote a specific thread (one vote per user)"""
-    try:
-        thread = Thread.objects.get(id=thread_id)
-        user = User.objects.get(id=current_user)
-
-        user_id_str = str(user.id)
-        
-        # Check if user has already voted
-        if user_id_str in thread.voted_users:
-            return error_response('You have already voted on this thread', 409)
+        elif user_id_str in obj.upvoted_users:
+            obj.upvoted_users.remove(user_id_str)
         
         # Add user to voted list and increment downvote count
-        thread.voted_users.append(user_id_str)
-        thread.downvotes = thread.downvotes + 1
-        thread.save()
+        obj.downvoted_users.append(user_id_str)
+        obj.save()
         
         return success_response(
-            data={'upvotes': thread.upvotes, 'downvotes': thread.downvotes, 'score': thread.score},
-            message='Thread downvoted successfully',
+            data={'score': obj.score},
+            message=f'{obj_type} downvoted successfully',
             status_code=201
         )
     except DoesNotExist:
-        return error_response('Thread not found', 404)
+        return error_response(f'{obj_type} not found', 404)
     except Exception as e:
-        return error_response('Invalid thread ID or voting failed', 400)
+        return error_response('Invalid obj ID or voting failed', 400)
 
 
 
-def remove_thread_vote_by_id(thread_id: str, current_user: str) -> api_response:
-    """Remove user's vote from a specific thread"""
-    try:
-        user = User.objects.get(id=current_user)
-        thread = Thread.objects.get(id=thread_id)
-        
-        user_id_str = str(user.id)
-        
-        # Check if user has voted on this thread
-        if user_id_str not in thread.voted_users:
-            return error_response('You have not voted on this thread', 404)
-        
-        # Remove user from voted list
-        thread.voted_users.remove(user_id_str)
-        
-        # Since we don't track vote type, we'll decrement from upvotes first, then downvotes
-        if thread.upvotes > 0:
-            thread.upvotes = thread.upvotes - 1
-            message = 'Thread upvote removed successfully'
-        elif thread.downvotes > 0:
-            thread.downvotes = thread.downvotes - 1
-            message = 'Thread downvote removed successfully'
-        else:
-            # This shouldn't happen if data is consistent
-            message = 'Thread vote removed successfully'
-        
-        thread.save()
-        
-        return success_response(
-            data={'upvotes': thread.upvotes, 'downvotes': thread.downvotes, 'score': thread.score},
-            message=message,
-            status_code=200
-        )
-    except DoesNotExist:
-        return error_response('Thread not found', 404)
-    except Exception as e:
-        return error_response('Invalid thread ID or vote removal failed', 400)
 
 
 # POST PIN views
