@@ -27,18 +27,19 @@
 
 - **Credenciais via Variáveis de Ambiente**  
   Nenhum arquivo sensível foi commitado.  
-  As credenciais estão armazenadas em variáveis de ambiente e também foram enviadas via **Blackboard** conforme exigido.
+  As credenciais estão armazenadas em variáveis de ambiente
 
 - **Deploy em EC2 (AWS)**  
-  O processo de **deploy** está em andamento.  
-  O servidor já foi configurado na EC2, mas o ambiente ainda não está totalmente estável ou acessível publicamente.
+  O processo de **deploy** na AWS foi concluído 
 
 
 ## Requisitos Não Atendidos:
---------------------------------------------------------------------------------------------------------
+ Enviar os arquivos de credenciais via **Blackboard**
+
+
 ##  Observações Finais
 
-- O projeto está funcional em ambiente local e segue as boas práticas de desenvolvimento indicadas.  
+- O projeto está funcional em ambiente local e segue as boas práticas de desenvolvimento indicadas.
 
 
-> **Última atualização:** 22/10/2025
+> **Última atualização:** 24/10/2025
