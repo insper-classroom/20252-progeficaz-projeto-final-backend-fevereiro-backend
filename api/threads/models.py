@@ -14,9 +14,8 @@ class Thread(Document): #perguntas
     subjects = ListField(StringField(max_length=100), default=lambda: ['Geral'])  # Default subject
 
     # Voting fields
-    upvotes = IntField(default=0, min_value=0)
-    downvotes = IntField(default=0)
-    voted_users = ListField(StringField(), default=list)  # Track users who have voted
+    upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
 
     created_at = DateTimeField(default=get_brasilia_now)
     
@@ -28,7 +27,7 @@ class Thread(Document): #perguntas
     @property
     def score(self):
         """Calculate the net score (upvotes - downvotes)"""
-        return self.upvotes - self.downvotes
+        return len(self.upvoted_users) - len(self.downvoted_users)
 
     def to_dict(self):
         """Convert the Thread document to a dictionary."""
@@ -42,8 +41,6 @@ class Thread(Document): #perguntas
             'semester': self.semester,
             'courses': self.courses,
             'subjects': self.subjects,
-            'upvotes': self.upvotes,
-            'downvotes': self.downvotes,
             'score': self.score,
             'created_at': brasilia_time.isoformat() if brasilia_time else None,
         }
@@ -54,9 +51,9 @@ class Post(Document): #respostas
     author = ReferenceField(User, required=True)
     content = StringField(required=True)
     pinned = me.BooleanField(default=False)  # Pin status for the post
-    upvotes = IntField(default=0, min_value=0)
-    downvotes = IntField(default=0)
-    voted_users = ListField(StringField(), default=list)  # Track users who have voted
+    upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+
     created_at = DateTimeField(default=get_brasilia_now)
     
     meta = {
@@ -67,7 +64,7 @@ class Post(Document): #respostas
     @property
     def score(self):
         """Calculate the net score (upvotes - downvotes)"""
-        return self.upvotes - self.downvotes
+        return len(self.upvoted_users) - len(self.downvoted_users)
 
     def to_dict(self):
         """Convert the Post document to a dictionary."""
@@ -79,8 +76,6 @@ class Post(Document): #respostas
             'author': self.author.username,
             'content': self.content,
             'pinned': self.pinned,
-            'upvotes': self.upvotes,
-            'downvotes': self.downvotes,
             'score': self.score,
             'created_at': brasilia_time.isoformat() if brasilia_time else None,
         }
