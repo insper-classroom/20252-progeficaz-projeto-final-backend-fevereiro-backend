@@ -22,8 +22,7 @@ jobs:
           script: |
             cd /home/ubuntu/projeto3/
 
-            docker-compose down
+            docker compose down
             git pull origin main
-            docker-compose up -d --build
-            # Optionally, you can run migrations or other commands here
+            docker compose up -d --build
             echo "Pulled latest changes and restarted services."
