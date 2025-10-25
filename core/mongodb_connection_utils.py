@@ -13,6 +13,10 @@ from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from api.threads.models import Post, Thread
 from core.utils import utc_to_brasilia
 
+def _get_unmasked_uri():
+    """Helper to get the configured MongoDB URI."""
+    return os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
+
 
 def test_mongodb_connection(uri=None, timeout=10):
     """
@@ -26,7 +30,7 @@ def test_mongodb_connection(uri=None, timeout=10):
         dict: Connection test results with status and details.
     """
     if uri is None:
-        uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
+        uri = _get_unmasked_uri()
 
     is_atlas = "mongodb.net" in uri or "mongodb+srv" in uri
 
@@ -42,15 +46,17 @@ def test_mongodb_connection(uri=None, timeout=10):
     }
 
     try:
-        # Disconnect any existing connections
-        me.disconnect()
-
+        # Use a temporary, separate connection alias to avoid interfering
+        # with the global connection managed by the app/tests.
+        alias = f"health-check-{time.time()}"
+        
         # Measure connection time
         start_time = time.time()
 
         # Attempt connection with timeout
         connection = me.connect(
             host=uri,
+            alias=alias,
             serverSelectionTimeoutMS=timeout * 1000,
             connectTimeoutMS=timeout * 1000,
             socketTimeoutMS=timeout * 1000,
@@ -59,12 +65,12 @@ def test_mongodb_connection(uri=None, timeout=10):
         connection_time = time.time() - start_time
 
         # Get server information
-        db = connection.get_database()
+        db = me.get_db(alias)
         server_info = db.client.server_info()
 
         # Test a simple query
         query_start = time.time()
-        Thread.objects().limit(1)
+        db.command('ping') # Use a lightweight command
         query_time = time.time() - query_start
 
         # Populate result
@@ -125,7 +131,7 @@ def test_mongodb_connection(uri=None, timeout=10):
 
     finally:
         try:
-            me.disconnect()
+            me.disconnect(alias=alias)
         except:
             pass
 
@@ -140,9 +146,6 @@ def test_database_operations(uri=None):
     Returns:
         dict: Test results for CRUD operations.
     """
-    if uri is None:
-        uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
-
     result = {
         "success": False,
         "operations": {
@@ -156,9 +159,14 @@ def test_database_operations(uri=None):
     }
 
     try:
-        # Connect to database
-        me.connect(host=uri, serverSelectionTimeoutMS=10000)
+        # Use a temporary, separate connection alias
+        # This function will now use the application's default connection
+        # which is more reliable in a test environment where conftest
+        # manages the connection.
+        # If a separate connection is truly needed, it should be managed carefully.
 
+        alias = f"db-ops-check-{time.time()}"
+        
         # Test CREATE
         brasilia_now = utc_to_brasilia(datetime.utcnow())
         test_thread = Thread(title=f"Test Thread {brasilia_now.isoformat()}")
@@ -212,8 +220,7 @@ def test_database_operations(uri=None):
         try:
             # Clean up any remaining test data
             Thread.objects(title__contains="Test Thread").delete()
-            Post.objects(author="Test User").delete()
-            me.disconnect()
+            Post.objects(author="Test User").delete() # This might fail if the main connection is different
         except:
             pass
 

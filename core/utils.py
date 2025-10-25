@@ -10,7 +10,6 @@ from email.mime.text import MIMEText
 import pytz
 from dotenv import load_dotenv
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager
 
 load_dotenv()
 
@@ -74,9 +73,44 @@ def update_index_json() -> None:
                                 "PUT": "Confirmation of thread update",
                                 "DELETE": "Confirmation of thread deletion",
                             },
-                            "url": f"{BASE_URL}/api/threads/<thread_id>",
+                            "url": f"{BASE_URL}/api/threads/<thread_id>"
                         },
-                    },
+                        "/posts/<post_id>": {
+                            "methods": ["GET", "PUT", "DELETE"],
+                            "description": "Get, update, or delete a specific post by ID",
+                            "response": {
+                                "GET": "Details of the specified post",
+                                "PUT": "Confirmation of post update",
+                                "DELETE": "Confirmation of post deletion"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>"
+                        },
+                        "/posts/<post_id>/upvote": {
+                            "methods": ["POST"],
+                            "description": "Upvote a specific post (requires authentication)",
+                            "response": {
+                                "POST": "Updated vote counts and confirmation"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>/upvote"
+                        },
+                        "/posts/<post_id>/downvote": {
+                            "methods": ["POST"],
+                            "description": "Downvote a specific post (requires authentication)",
+                            "response": {
+                                "POST": "Updated vote counts and confirmation"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>/downvote"
+                        },
+                        "/posts/<post_id>/vote": {
+                            "methods": ["DELETE"],
+                            "description": "Remove user's vote from a specific post (requires authentication)",
+                            "response": {
+                                "DELETE": "Updated vote counts and confirmation"
+                            },
+                            "url": f"{BASE_URL}/api/posts/<post_id>/vote"
+                        }
+
+                    }
                 },
                 "search": {
                     "description": "Endpoints for searching threads",
@@ -130,13 +164,6 @@ def update_index_json() -> None:
     with open("core/index.json", "w") as f:
         json.dump(json_data, f, indent=4)
     return
-
-
-# Auth Utilities
-
-
-bcrypt = Bcrypt()
-jwt = JWTManager()
 
 # API Response Utilities
 
@@ -279,3 +306,11 @@ def send_email(receiver_email, subject, html=""):
                 "details": str(e),
             }
         }, 500  # Internal Server Error
+
+
+
+# Auth Utilities
+from flask_jwt_extended import JWTManager
+
+bcrypt = Bcrypt()
+jwt = JWTManager()

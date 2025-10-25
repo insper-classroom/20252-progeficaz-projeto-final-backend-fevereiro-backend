@@ -18,5 +18,3 @@ class User(Document):
             "username": self.username,
             "email": self.email,
         }
-
-    pass

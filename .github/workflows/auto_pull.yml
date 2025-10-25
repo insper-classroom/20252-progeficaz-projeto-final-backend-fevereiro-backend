@@ -21,10 +21,9 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /home/ubuntu/projeto3/
-            git stash # Stash any local changes
-            git stash drop # Drop the stashed changes
 
-            git pull --rebase origin main # Pull the latest changes from main branch
-            sudo systemctl restart gunicorn.service # Restart Gunicorn to apply changes
-
-
+            docker-compose down
+            git pull origin main
+            docker-compose up -d --build
+            # Optionally, you can run migrations or other commands here
+            echo "Pulled latest changes and restarted services."

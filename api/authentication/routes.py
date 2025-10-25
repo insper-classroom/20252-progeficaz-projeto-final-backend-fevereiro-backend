@@ -1,4 +1,5 @@
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from api.authentication import views as vi
 
@@ -15,3 +16,10 @@ def register():
 def login():
     data = request.get_json() or {}
     return vi.login(data)
+
+@auth_bp.route("/me", methods=["GET"])
+@jwt_required()
+def me():
+    """Get current authenticated user's info."""
+    current_user = get_jwt_identity()
+    return vi.me(current_user)
