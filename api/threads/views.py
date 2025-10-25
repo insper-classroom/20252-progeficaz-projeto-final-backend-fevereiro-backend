@@ -242,15 +242,15 @@ def delete_post_by_id(post_id: str, current_user: str) -> api_response:
 # VOTING views
 
 
-def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","post"]) -> api_response:
+def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["threads","posts"]) -> api_response:
     """Upvote a specific post (one vote per user)"""
     try:
         user = User.objects.get(id=current_user)
-        
-        if obj_type == "post":
+
+        if obj_type == "posts":
             obj = Post.objects.get(id=obj_id)
-        elif obj_type == "thread":
-            obj = Post.objects.get(id=obj_id)
+        elif obj_type == "threads":
+            obj = Thread.objects.get(id=obj_id)
         else:
             return error_response('Object not found', 404)
 
@@ -292,10 +292,10 @@ def downvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","p
     """Downvote a specific post (one vote per user)"""
     try:
         user = User.objects.get(id=current_user)
-        if obj_type == "post":
+        if obj_type == "posts":
             obj = Post.objects.get(id=obj_id)
-        elif obj_type == "thread":
-            obj = Post.objects.get(id=obj_id)
+        elif obj_type == "threads":
+            obj = Thread.objects.get(id=obj_id)
         else:
             return error_response('Object not found', 404)
 
@@ -317,6 +317,7 @@ def downvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","p
         # Add user to voted list and increment downvote count
         obj.downvoted_users.append(user_id_str)
         obj.save()
+        print("DEBUG: Downvote successful for", obj_type, "ID:", obj_id, "by user:", current_user, "New score:", obj.score)
         
         return success_response(
             data={'score': obj.score},
