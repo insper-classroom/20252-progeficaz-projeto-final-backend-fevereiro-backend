@@ -12,10 +12,22 @@ def register():
     return vi.register(data)
 
 
+@auth_bp.route("/verify-email", methods=["POST"])
+def verify_email():
+    data = request.get_json() or {}
+    return vi.verify_email(data)
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+def resend_verification():
+    data = request.get_json() or {}
+    return vi.resend_verification(data)
+
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json() or {}
     return vi.login(data)
+
 
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required()

@@ -25,6 +25,7 @@ def post_data():
 def test_create_thread_success(client, registered_user_token, thread_data):
     """Test successful creation of a thread."""
     headers = {'Authorization': f'Bearer {registered_user_token}'}
+    
     response = client.post('/api/threads', json=thread_data, headers=headers)
     # DEBUGGING OUTPUT
     print("Response data:", response.get_json())
@@ -99,19 +100,24 @@ def test_update_thread_success(client, registered_user_token, thread_data):
     updated_thread = Thread.objects.get(id=thread_id)
     assert updated_thread.description == update_data['description']
 
-def test_update_thread_unauthorized(client, thread_data):
+def test_update_thread_unauthorized(client, thread_data, registered_user_token):
     """Test updating a thread without authentication."""
-    # Create a thread first (e.g., by another user or without auth for simplicity)
-    # We need a valid user to create the thread to test updating it without auth.
-    # The Thread model does not have an 'author' field, so we just need to create a thread.
-    # The User creation was failing because 'name' and 'matricula' are required.
-    # However, we don't even need to create a user for this test.
-    # Just create a thread directly.
-    User(username="thread_creator", email="creator@example.com", password="password").save()
-    other_user = User.objects.get(username="thread_creator")
-    thread = Thread(title="Unauthorized Thread", description="Desc", author=other_user).save()
-    response = client.put(f'/api/threads/{thread.id}', json={"title": "New Title"})
-    assert response.status_code == 401
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_response = client.post('/api/threads', json={
+        "title": "Thread to Update",
+        "description": "Original description.",
+        "semester": "2024.1",
+        "courses": [],
+        "subjects": []
+    }, headers=headers)
+    thread_id = create_response.json['id']
+    
+    update_data = {"description": "Attempted unauthorized update."}
+    # No auth header
+    response = client.put(f'/api/threads/{thread_id}', json=update_data)
+    assert response.status_code == 401 # Or 422 depending on JWT config
+    assert response.json == {'msg': 'Missing Authorization Header'}
+
 
 def test_create_post_success(client, registered_user_token, thread_data, post_data):
     """Test successful creation of a post within a thread."""
@@ -194,28 +200,111 @@ def test_thread_post_vote_lifecycle(client, registered_user_token, thread_data, 
     assert any(p.get('id') == post_id for p in r.json.get('posts', []))
 
     # Upvote without auth -> should require auth (401 or 422 depending on config)
-    r = client.post(f'/api/post/{post_id}/upvote')
+    r = client.post(f'/api/posts/{post_id}/upvote')
     assert r.status_code in (401, 422, 404)
 
     # Upvote with auth
-    r = client.post(f'/api/post/{post_id}/upvote', headers=headers)
+    r = client.post(f'/api/posts/{post_id}/upvote', headers=headers)
     assert r.status_code in (200, 201, 409)
     if r.status_code in (200, 201):
         assert 'score' in r.json and r.json['score'] == 1
+        
+    # upvote again to remove
+    r = client.post(f'/api/posts/{post_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 0
 
-
-    # Duplicate upvote should be prevented (409)
-    r_dup = client.post(f'/api/post/{post_id}/upvote', headers=headers)
-    assert r_dup.status_code in (200, 201, 409)
-    if r_dup.status_code == 409:
-        assert 'error' in r_dup.json
-
-    # Downvote after removal should succeed
-    r = client.post(f'/api/post/{post_id}/downvote', headers=headers)
+    # Downvote without auth -> should require auth (401 or 422 depending on config)
+    r = client.post(f'/api/posts/{post_id}/downvote')
+    assert r.status_code in (401, 422, 404)
+    
+    # Downvote with auth
+    r = client.post(f'/api/posts/{post_id}/downvote', headers=headers)
     assert r.status_code in (200, 201, 409)
     if r.status_code in (200, 201):
         assert 'score' in r.json and r.json['score'] == -1
 
+    # downvote again to remove
+    r = client.post(f'/api/posts/{post_id}/downvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 0
+        
+    # Verify vote toggling works correctly
+    # upvote again to +1
+    r = client.post(f'/api/posts/{post_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 1
+        
+    # downvote again to -1
+    r = client.post(f'/api/posts/{post_id}/downvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == -1
+        
+    # upvote again to +1
+    r = client.post(f'/api/posts/{post_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 1
+
+    
+    # Test thread upvote and downvote similarly
+    
+    # Upvote thread without auth -> should require auth (401 or 422 depending on config)
+    r = client.post(f'/api/threads/{thread_id}/upvote')
+    assert r.status_code in (401, 422, 404)
+    
+    # Upvote thread with auth
+    r = client.post(f'/api/threads/{thread_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 1
+        
+    # upvote again to remove
+    r = client.post(f'/api/threads/{thread_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 0
+        
+        
+    # Downvote thread without auth -> should require auth (401 or 422 depending on config)
+    r = client.post(f'/api/threads/{thread_id}/downvote')
+    assert r.status_code in (401, 422, 404)
+    
+    # Downvote thread with auth
+    r = client.post(f'/api/threads/{thread_id}/downvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == -1
+    
+    # downvote again to remove
+    r = client.post(f'/api/threads/{thread_id}/downvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 0
+        
+    # Verify vote toggling works correctly
+    # upvote again to +1
+    r = client.post(f'/api/threads/{thread_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 1
+    
+    # downvote again to -1
+    r = client.post(f'/api/threads/{thread_id}/downvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == -1
+        
+    # upvote again to +1
+    r = client.post(f'/api/threads/{thread_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 1
+    
 
 
 def test_thread_pin_unpin_flow_if_supported(client, registered_user_token, thread_data, post_data):
