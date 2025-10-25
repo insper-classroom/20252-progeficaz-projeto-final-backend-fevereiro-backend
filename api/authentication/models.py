@@ -65,7 +65,7 @@ class AuthToken(Document):
     def to_dict(self):
         return {
             "id": str(self.id),
-            "user_id": self.user_id,
+            "user_id": self._user_id,
             "token_type": self.token_type,
         }
         

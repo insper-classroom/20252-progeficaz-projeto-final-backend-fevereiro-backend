@@ -106,7 +106,7 @@ def update_thread_by_id(thread_id: str, data: dict, current_user: str) -> api_re
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         thread = Thread.objects.get(id=thread_id, author=user)
         
         # # Verificar moderação dos campos que serão atualizados
@@ -153,7 +153,7 @@ def delete_thread_by_id(thread_id: str, current_user: str) -> api_response:
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         thread = Thread.objects.get(id=thread_id, author=user)
         # Delete all posts associated with this thread
         Post.objects(thread=thread).delete()
@@ -214,7 +214,7 @@ def update_post_by_id(post_id: str, data: dict, current_user: str) -> api_respon
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         post = Post.objects.get(id=post_id, author=user)
 
         # Verificar moderação do conteúdo se estiver sendo atualizado
@@ -249,7 +249,7 @@ def delete_post_by_id(post_id: str, current_user: str) -> api_response:
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         post = Post.objects.get(id=post_id, author=user)
         post.delete()
         return success_response(message='Post deleted successfully', status_code=200)
@@ -269,7 +269,7 @@ def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["threads","po
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
 
         if obj_type == "posts":
             obj = Post.objects.get(id=obj_id)
@@ -319,7 +319,7 @@ def downvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","p
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         if obj_type == "posts":
             obj = Post.objects.get(id=obj_id)
         elif obj_type == "threads":
@@ -370,7 +370,7 @@ def pin_post_by_id(post_id: str, current_user: str) -> api_response:
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         post = Post.objects.get(id=post_id)
         thread = post.thread
         
@@ -399,7 +399,7 @@ def unpin_post_by_id(post_id: str, current_user: str) -> api_response:
         if not user:
             return error_response("User not found", 404)
         if not user.is_active():
-            error_response("User account is not active", 403)
+            return error_response("User account is not active", 403)
         post = Post.objects.get(id=post_id)
         thread = post.thread
         
