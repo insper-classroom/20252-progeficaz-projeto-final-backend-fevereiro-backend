@@ -56,7 +56,7 @@ def create_thread(data: dict, current_user: str) -> api_response:
     # Validation
     
     # Handle both "2024.1" and integer formats
-    semester = int(str(semester).split('.')[1])
+    semester = int(str(semester).split('.')[-1])
 
     if not title:
         return error_response('Title is required', 400)
@@ -67,7 +67,6 @@ def create_thread(data: dict, current_user: str) -> api_response:
         return error_response('Description must be less than 500 characters', 400)
     
     try:
-        
         if not (1 <= semester <= 10):
             return error_response(f'Semester must be between 1 and 10', 400)
     except (ValueError, IndexError):
