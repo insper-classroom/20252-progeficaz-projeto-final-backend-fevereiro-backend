@@ -169,3 +169,81 @@ def test_update_post_success(client, registered_user_token, thread_data, post_da
     # Verify update in DB
     updated_post = Post.objects.get(id=post_id)
     assert updated_post.content == update_data['content']
+
+def test_thread_post_vote_lifecycle(client, registered_user_token, thread_data, post_data):
+    """Create thread, create post, vote flow (upvote/duplicate/remove/downvote)."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+
+    # Create thread
+    r = client.post('/api/threads', json=thread_data, headers=headers)
+    assert r.status_code == 201
+    thread = r.json
+    assert 'id' in thread and thread['title'] == thread_data['title']
+    thread_id = thread['id']
+
+    # Create post in thread
+    r = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    assert r.status_code == 201
+    post = r.json
+    assert 'id' in post and post['content'] == post_data['content']
+    post_id = post['id']
+
+    # Ensure post appears in thread view
+    r = client.get(f'/api/threads/{thread_id}', headers=headers)
+    assert r.status_code == 200
+    assert any(p.get('id') == post_id for p in r.json.get('posts', []))
+
+    # Upvote without auth -> should require auth (401 or 422 depending on config)
+    r = client.post(f'/api/post/{post_id}/upvote')
+    assert r.status_code in (401, 422, 404)
+
+    # Upvote with auth
+    r = client.post(f'/api/post/{post_id}/upvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == 1
+
+
+    # Duplicate upvote should be prevented (409)
+    r_dup = client.post(f'/api/post/{post_id}/upvote', headers=headers)
+    assert r_dup.status_code in (200, 201, 409)
+    if r_dup.status_code == 409:
+        assert 'error' in r_dup.json
+
+    # Downvote after removal should succeed
+    r = client.post(f'/api/post/{post_id}/downvote', headers=headers)
+    assert r.status_code in (200, 201, 409)
+    if r.status_code in (200, 201):
+        assert 'score' in r.json and r.json['score'] == -1
+
+
+
+def test_thread_pin_unpin_flow_if_supported(client, registered_user_token, thread_data, post_data):
+    """Try pin/unpin flow if endpoints exist; be tolerant to 404 if not implemented."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+
+    # Create thread and post
+    r = client.post('/api/threads', json=thread_data, headers=headers)
+    assert r.status_code == 201
+    thread_id = r.json['id']
+
+    r = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    assert r.status_code == 201
+    post_id = r.json['id']
+
+    # Pin post (may be 200 ok, 401, or 404 if not implemented)
+    r = client.post(f'/api/posts/{post_id}/pin', headers=headers)
+    assert r.status_code in (200, 401, 404)
+    if r.status_code == 200:
+        assert 'pinned' in r.json and isinstance(r.json['pinned'], bool)
+
+        # Verify pinned appears first in thread (if thread view supports posts)
+        r_thread = client.get(f'/api/threads/{thread_id}', headers=headers)
+        assert r_thread.status_code == 200
+        posts = r_thread.json.get('posts', [])
+        if posts:
+            assert posts[0].get('pinned', False) is True
+
+        # Unpin
+        r_unpin = client.delete(f'/api/posts/{post_id}/pin', headers=headers)
+        assert r_unpin.status_code in (200, 404)

@@ -75,3 +75,25 @@ def test_login_user_non_existent_email(client, auth_data):
     response = client.post('/api/auth/login', json=login_data)
     assert response.status_code == 401
     assert response.json == {'error': 'Email ou senha inválidos'}
+
+def test_register_login_and_me(client, auth_data):
+    """Register a user, login and call /api/auth/me."""
+    # Register (may return 201 or 400/409 if already exists)
+    r = client.post('/api/auth/register', json=auth_data)
+    assert r.status_code in (201, 400, 409)
+
+    # Login
+    login_payload = {"email": auth_data['email'], "password": auth_data['password']}
+    r = client.post('/api/auth/login', json=login_payload)
+    assert r.status_code == 200
+    assert 'access_token' in r.json
+
+    token = r.json['access_token']
+    headers = {'Authorization': f'Bearer {token}'}
+
+    # me endpoint
+    r = client.get('/api/auth/me', headers=headers)
+    assert r.status_code == 200
+    assert isinstance(r.json, dict)
+    assert 'email' in r.json and r.json['email'] == auth_data['email']
+    
