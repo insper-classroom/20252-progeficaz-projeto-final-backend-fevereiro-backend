@@ -14,7 +14,8 @@ threads_bp = Blueprint("threads", __name__)
 @jwt_required()
 def list_threads():
     """List all threads"""
-    return vi.list_threads()
+    current_user = get_jwt_identity()
+    return vi.list_threads(current_user)
 
 
 @threads_bp.route("/threads", methods=["POST"])
@@ -30,7 +31,8 @@ def create_thread():
 @jwt_required()
 def get_thread(thread_id):
     """Get a specific thread by ID"""
-    return vi.get_thread_by_id(thread_id)
+    current_user = get_jwt_identity()
+    return vi.get_thread_by_id(thread_id, current_user)
 
 
 @threads_bp.route("/threads/<thread_id>", methods=["PUT"])
@@ -57,7 +59,8 @@ def delete_thread(thread_id):
 @jwt_required()
 def get_post(post_id):
     """Get a specific post by ID"""
-    return vi.get_post_by_id(post_id)
+    current_user = get_jwt_identity()
+    return vi.get_post_by_id(post_id, current_user)
 
 
 @threads_bp.route("/threads/<thread_id>/posts", methods=["POST"])
