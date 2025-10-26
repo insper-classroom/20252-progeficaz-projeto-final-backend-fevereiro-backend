@@ -4,37 +4,32 @@ from api.authentication.models import User
 from mongoengine.errors import DoesNotExist, ValidationError
 from core.types import api_response
 from core.utils import success_response, error_response, validation_error_response
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from typing import Literal
+from bson import ObjectId
 # from core.moderation import verificar_thread, verificar_post
 
 # THREADS views
-def list_threads() -> api_response:
+def list_threads(current_user: str) -> api_response:
     """List all threads"""
     try:
-
         # Build query
-        query = Thread.objects
-        # Apply ordering
-        threads = query.order_by('-created_at')
-        
-        # Prepare response
-        data = {
-            'threads': [t.to_dict() for t in threads]
-        }
+        threads = Thread.objects
+       
+        data = {'threads': [tr.to_dict(user_id=current_user) for tr in threads]}
+        print(data)
         
         return success_response(data=data, status_code=200)
     
     except Exception as e:
-        return error_response("Failed to retrieve threads", 500)
+        return error_response(f"Failed to retrieve threads {e}", 500)
 
-def get_thread_by_id(thread_id: str) -> api_response:
+def get_thread_by_id(thread_id: str, current_user: str) -> api_response:
     """Get a specific thread by ID along with its posts"""
     try:
         thread = Thread.objects.get(id=thread_id)
-        posts = Post.objects(thread=thread).order_by('-pinned', 'created_at')  # Pinned posts first
-        data = thread.to_dict()
-        data['posts'] = [p.to_dict() for p in posts]
+        posts = Post.objects(_thread=thread)
+        data = thread.to_dict(user_id=current_user)
+        data['posts'] = [p.to_dict(user_id=current_user) for p in posts]
         return success_response(data=data, status_code=200)
     except DoesNotExist:
         return error_response('Thread not found', 404)
@@ -43,8 +38,6 @@ def get_thread_by_id(thread_id: str) -> api_response:
 
 def create_thread(data: dict, current_user: str) -> api_response:
     """Create a new thread"""
-    current_user = get_jwt_identity()
-    
     title = data.get('title', '').strip()
     description = data.get('description', '').strip() # Optional description field
     
@@ -77,30 +70,27 @@ def create_thread(data: dict, current_user: str) -> api_response:
     # if not is_safe:
     #     return error_response(moderation_message, 400)
     
-    user = User.objects.get(id=current_user)
-    
     try:
         thread = Thread(
-            author=user,
-            title=title, 
-            description=description,
+            _author=ObjectId(current_user),
+            _title=title, 
+            _description=description,
             semester=semester,
             courses=courses,
             subjects=subjects
         )
         thread.save()
-        return success_response(data=thread.to_dict(), message="Thread created successfully", status_code=201)
+        return success_response(data=thread.to_dict(user_id=current_user), message="Thread created successfully", status_code=201)
     except ValidationError as e:
         return error_response(str(e), 400)
     except Exception as e:
-        return error_response("Failed to create thread", 500)
+        return error_response("Failed to create thread: " + str(e), 500)
 
 def update_thread_by_id(thread_id: str, data: dict, current_user: str) -> api_response:
     """Update a thread's title or description"""
     try:
-        user = User.objects.get(id=current_user)
-        thread = Thread.objects.get(id=thread_id, author=user)
-        
+        thread = Thread.objects.get(id=thread_id, _author=ObjectId(current_user))
+
         # # Verificar moderação dos campos que serão atualizados
         # title_to_check = data.get('title', '').strip() if 'title' in data else None
         # description_to_check = data.get('description', '').strip() if 'description' in data else None
@@ -114,41 +104,32 @@ def update_thread_by_id(thread_id: str, data: dict, current_user: str) -> api_re
         #         return error_response(moderation_message, 400)
         
         # Update fields if provided
-        if 'title' in data:
-            if not data['title']:
-                return jsonify({'error': 'title cannot be empty'}), 400
-            thread.title = data['title']
-        if 'description' in data:
-            thread.description = data['description']
-        if 'semester' in data:
-            thread.semester = data['semester']
-        if 'courses' in data:
-            thread.courses = data['courses']
-        if 'subjects' in data:
-            thread.subjects = data['subjects']
         
-        thread.save()
+        thread.update(data)
+        
         return success_response(message="Thread updated successfully", status_code=201)
     except DoesNotExist:
         return error_response('Thread not found', 404)
     except ValidationError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'error': 'Invalid thread ID'}), 400
+        return jsonify({'error': 'Invalid thread ID: ' + str(e)}), 400
 
 
 def delete_thread_by_id(thread_id: str, current_user: str) -> api_response:
     """Delete a thread and all its associated posts"""
-    current_user = get_jwt_identity()
     try:
-        user = User.objects.get(id=current_user)
-        thread = Thread.objects.get(id=thread_id, author=user)
-        # Delete all posts associated with this thread
-        Post.objects(thread=thread).delete()
+        thread = Thread.objects.get(id=thread_id)
         
-        # Delete the thread
+        if str(thread.author.id) != current_user:
+            return error_response('Only the thread owner can delete the thread', 403)
+        
+        # Delete associated posts
+        Post.objects(_thread=thread)
+        for post in Post.objects(_thread=thread):
+            post.delete()
         thread.delete()
-        
+
         return success_response(message='Thread and associated posts deleted successfully', status_code=200)
     except DoesNotExist:
         return error_response('Thread not found', 404)
@@ -158,11 +139,11 @@ def delete_thread_by_id(thread_id: str, current_user: str) -> api_response:
 
 # POSTS views 
 
-def get_post_by_id(post_id: str) -> api_response:
+def get_post_by_id(post_id: str, current_user: str) -> api_response:
     """Get a specific post by ID"""
     try:
         post = Post.objects.get(id=post_id)
-        return success_response(data=post.to_dict(), status_code=200)
+        return success_response(data=post.to_dict(user_id=current_user), status_code=200)
     except DoesNotExist:
         return error_response('Post not found', 404)
     except Exception as e:
@@ -170,22 +151,19 @@ def get_post_by_id(post_id: str) -> api_response:
 
 def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
     """Create a new post in a thread"""
-    current_user = get_jwt_identity()
     try:
-        thread = Thread.objects.get(id=thread_id)
-        author = User.objects.get(id=current_user)  
         content = data.get('content')
         if not content:
-            return error_response('content required', 400)
+            return error_response('Content is required', 400)
 
         # # Verificar moderação do conteúdo
         # is_safe, moderation_message = verificar_post(content)
         # if not is_safe:
         #     return error_response(moderation_message, 400)
-        
-        post = Post(thread=thread, author=author, content=content)
+
+        post = Post(_thread=ObjectId(thread_id), _author=ObjectId(current_user), _content=content)
         post.save()
-        return success_response(data=post.to_dict(), message="Post created successfully", status_code=201)
+        return success_response(data=post.to_dict(user_id=current_user), message="Post created successfully", status_code=201)
     except DoesNotExist:
         return error_response('Thread not found', 404)
     except ValidationError as e:
@@ -195,11 +173,10 @@ def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
 
 def update_post_by_id(post_id: str, data: dict, current_user: str) -> api_response:
     """Update a post's content or author"""
-    current_user = get_jwt_identity()
-
     try:
-        user = User.objects.get(id=current_user)
-        post = Post.objects.get(id=post_id, author=user)
+        post = Post.objects.get(id=post_id)
+        if str(post.author.id) != current_user:
+            return error_response('You do not have permission to update this post', 403)
 
         # Verificar moderação do conteúdo se estiver sendo atualizado
         if 'content' in data:
@@ -210,27 +187,21 @@ def update_post_by_id(post_id: str, data: dict, current_user: str) -> api_respon
             #         return error_response(moderation_message, 400)
             post.content = data['content']
         
-        # Update fields if provided
-        if 'author' in data:
-            post.author = data['author']
-        
-        post.save()
-        return success_response( message="Post updated successfully", status_code=201)
+        post.update_content(data['content'])
+
+        return success_response(message="Post updated successfully", status_code=201)
     except DoesNotExist:
         return error_response('Post not found', 404)
-    except ValidationError as e:
-        return error_response(str(e), 400)
     except Exception as e:
-        return error_response('Invalid thread ID', 400)
+        return error_response('Invalid post ID', 400)
 
 
 def delete_post_by_id(post_id: str, current_user: str) -> api_response:
     """Delete a specific post"""
-    current_user = get_jwt_identity()
-
     try:
-        user = User.objects.get(id=current_user)
-        post = Post.objects.get(id=post_id, author=user)
+        post = Post.objects.get(id=post_id)
+        if str(post.author.id) != current_user:
+            return error_response('You do not have permission to delete this post', 403)
         post.delete()
         return success_response(message='Post deleted successfully', status_code=200)
     except DoesNotExist:
@@ -242,40 +213,19 @@ def delete_post_by_id(post_id: str, current_user: str) -> api_response:
 # VOTING views
 
 
-def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","post"]) -> api_response:
+def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["threads","posts"]) -> api_response:
     """Upvote a specific post (one vote per user)"""
     try:
-        user = User.objects.get(id=current_user)
-        
-        if obj_type == "post":
+        if obj_type == "posts":
             obj = Post.objects.get(id=obj_id)
-        elif obj_type == "thread":
-            obj = Post.objects.get(id=obj_id)
+        elif obj_type == "threads":
+            obj = Thread.objects.get(id=obj_id)
         else:
             return error_response('Object not found', 404)
+        
+        # Upvote logic
+        obj.upvote(current_user)
 
-
-
-        user_id_str = str(user.id)
-        
-        
-        # Check if user has already voted
-        if user_id_str in obj.upvoted_users:
-            obj.upvoted_users.remove(user_id_str)
-            obj.save()
-            return success_response(
-            data={'score': obj.score},
-            message='Upvote removed successfully',
-            status_code=200
-        )
-        elif user_id_str in obj.downvoted_users:
-            obj.downvoted_users.remove(user_id_str)
-            
-        
-        # Add user to voted list and increment upvote count
-        obj.upvoted_users.append(user_id_str)
-        obj.save()
-        
         return success_response(
             data={'score': obj.score},
             message =f'{obj_type} upvoted successfully',
@@ -291,32 +241,15 @@ def upvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","pos
 def downvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","post"]) -> api_response:
     """Downvote a specific post (one vote per user)"""
     try:
-        user = User.objects.get(id=current_user)
-        if obj_type == "post":
+        if obj_type == "posts":
             obj = Post.objects.get(id=obj_id)
-        elif obj_type == "thread":
-            obj = Post.objects.get(id=obj_id)
+        elif obj_type == "threads":
+            obj = Thread.objects.get(id=obj_id)
         else:
             return error_response('Object not found', 404)
 
-
-        user_id_str = str(user.id)
-        
-        # Check if user has already voted
-        if user_id_str in obj.downvoted_users:
-            obj.downvoted_users.remove(user_id_str)
-            obj.save()
-            return success_response(
-            data={'score': obj.score},
-            message='Downvote removed successfully',
-            status_code=200
-        )
-        elif user_id_str in obj.upvoted_users:
-            obj.upvoted_users.remove(user_id_str)
-        
-        # Add user to voted list and increment downvote count
-        obj.downvoted_users.append(user_id_str)
-        obj.save()
+        # Donwvote logic
+        obj.downvote(current_user)
         
         return success_response(
             data={'score': obj.score},
@@ -337,17 +270,15 @@ def downvote_by_id(obj_id: str, current_user: str, obj_type: Literal["thread","p
 def pin_post_by_id(post_id: str, current_user: str) -> api_response:
     """Pin a post (only thread owner can pin posts)"""
     try:
-        user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id)
         thread = post.thread
         
         # Check if current user is the thread owner
-        if thread.author != user:
+        if str(thread.author.id) != current_user:
             return error_response('Only the thread owner can pin posts', 403)
         
         # Pin the post
-        post.pinned = True
-        post.save()
+        post.pin()
         
         return success_response(
             data={'pinned': post.pinned},
@@ -357,22 +288,20 @@ def pin_post_by_id(post_id: str, current_user: str) -> api_response:
     except DoesNotExist:
         return error_response('Post not found', 404)
     except Exception as e:
-        return error_response('Invalid post ID or pin failed', 400)
+        return error_response('Invalid post ID or pin failed: ' + str(e), 400)
 
 def unpin_post_by_id(post_id: str, current_user: str) -> api_response:
     """Unpin a post (only thread owner can unpin posts)"""
     try:
-        user = User.objects.get(id=current_user)
         post = Post.objects.get(id=post_id)
-        thread = post.thread
+        thread = post.get_thread()
         
         # Check if current user is the thread owner
-        if thread.author != user:
+        if str(thread.author.id) != current_user:
             return error_response('Only the thread owner can unpin posts', 403)
         
         # Unpin the post
-        post.pinned = False
-        post.save()
+        post.unpin()
         
         return success_response(
             data={'pinned': post.pinned},

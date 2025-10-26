@@ -3,7 +3,7 @@ from main import app as flask_app
 import mongoengine as me
 import os
 from dotenv import load_dotenv
-from api.authentication.models import User
+from api.authentication.models import User, AuthToken
 
 # Load environment variables from .env for test configuration
 load_dotenv()
@@ -75,7 +75,15 @@ def auth_data():
 @pytest.fixture
 def registered_user_token(client, auth_data):
     """Fixture to register a user and return their JWT token."""
+    # Register the user
     client.post('/api/auth/register', json=auth_data)
+    
+    # Verify the user's email
+    user = User.objects(_email=auth_data['email']).first()
+    token = AuthToken.objects(_user=user, _token_type="email_verification").first()
+    client.post('/api/auth/verify-email', json={"authToken": str(token.id)})
+    
+    # Login the user to get their token
     login_data = {
         "email": auth_data['email'],
         "password": auth_data['password']
@@ -91,7 +99,15 @@ def other_user_token(client):
         "email": "other@al.insper.edu.br",
         "password": "otherpassword"
     }
+    # Register the other user
     client.post('/api/auth/register', json=other_user_data)
+    
+    # Verify the other user's email
+    user = User.objects(_email=other_user_data['email']).first()
+    token = AuthToken.objects(_user=user, _token_type="email_verification").first()
+    client.post('/api/auth/verify-email', json={"authToken": str(token.id)})
+    
+    # Login the other user to get their token
     login_data = {
         "email": other_user_data['email'],
         "password": other_user_data['password']

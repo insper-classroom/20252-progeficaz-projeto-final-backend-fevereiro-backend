@@ -4,9 +4,9 @@ from core.utils import get_brasilia_now, utc_to_brasilia
 from api.authentication.models import User
 
 class Thread(Document): #perguntas
-    author = ReferenceField(User, required=True)
-    title = StringField(max_length=200, required=True)
-    description = StringField(max_length=500)  # Optional description field
+    _title = StringField(max_length=200, required=True)
+    _description = StringField(max_length=500)  # Optional description field
+    _author = ReferenceField(User, required=True)
     
     # Filter fields (optional for backward compatibility)
     semester = IntField(min_value=1, max_value=10, default=1)  # Default to 1st semester
@@ -14,68 +14,190 @@ class Thread(Document): #perguntas
     subjects = ListField(StringField(max_length=100), default=lambda: ['Geral'])  # Default subject
 
     # Voting fields
-    upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
-    downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    _upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    _downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    _score = IntField(default=0)  # Cached score for performance
 
-    created_at = DateTimeField(default=get_brasilia_now)
+
+    _created_at = DateTimeField(default=get_brasilia_now)
+    _updated_at = DateTimeField(default=get_brasilia_now)
+    
     
     meta = {
         'collection': 'threads',
-        'ordering': ['-created_at']
+        'ordering': ['-_score', '-_created_at']
     }
 
     @property
     def score(self):
         """Calculate the net score (upvotes - downvotes)"""
-        return len(self.upvoted_users) - len(self.downvoted_users)
+        new_score = len(self._upvoted_users) - len(self._downvoted_users)
+        if new_score != self._score:
+            self._score = new_score
+            self.save()
+        return self._score
+    
+    @property
+    def author(self):
+        return self._author
+    
+    def update(self, data: dict):
+        """Update thread fields"""
+        allowed_fields = ['title', 'description', 'semester', 'courses', 'subjects']
+        for field in allowed_fields:
+            if field in data:
+                setattr(self, f'_{field}' if field in ['title', 'description'] else field, data[field])
+        self._updated_at = get_brasilia_now()
+        self.save()
+    
+    def upvote(self, user_id: str):
+        """Add an upvote from a user"""
+        if user_id == self.author.id:
+            return  # Prevent users from upvoting their own posts
+        if user_id in self._downvoted_users:
+            self._downvoted_users.remove(user_id)
+        if user_id in self._upvoted_users:
+            self._upvoted_users.remove(user_id)
+        else:
+            self._upvoted_users.append(user_id)
+        self.save()
 
-    def to_dict(self):
+    def downvote(self, user_id: str):
+        """Add a downvote from a user"""
+        if user_id == self.author.id:
+            return  # Prevent users from downvoting their own posts
+        if user_id in self._upvoted_users:
+            self._upvoted_users.remove(user_id)
+        if user_id in self._downvoted_users:
+            self._downvoted_users.remove(user_id)
+        else:
+            self._downvoted_users.append(user_id)
+        self.save()
+        return 
+    
+    def to_dict(self, user_id=None):
         """Convert the Thread document to a dictionary."""
         # Convert UTC stored time to Brasília time for display
-        brasilia_time = utc_to_brasilia(self.created_at)
-        return {
+        thread_dict = {
             'id': str(self.id),
             'author': self.author.username,
-            'title': self.title,
-            'description': self.description,
+            'title': self._title,
+            'description': self._description,
             'semester': self.semester,
             'courses': self.courses,
             'subjects': self.subjects,
             'score': self.score,
-            'created_at': brasilia_time.isoformat() if brasilia_time else None,
+            'created_at': self._created_at,
         }
+        if user_id:
+            if str(user_id) in self._upvoted_users:
+                thread_dict['user_vote'] = 'upvote'
+            elif str(user_id) in self._downvoted_users:
+                thread_dict['user_vote'] = 'downvote'
+        return thread_dict
 
 
 class Post(Document): #respostas
-    thread = ReferenceField(Thread, required=True)
-    author = ReferenceField(User, required=True)
-    content = StringField(required=True)
-    pinned = me.BooleanField(default=False)  # Pin status for the post
-    upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
-    downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
-
-    created_at = DateTimeField(default=get_brasilia_now)
+    _content = StringField(required=True)
+    _author = ReferenceField(User, required=True)
+    _created_at = DateTimeField(default=get_brasilia_now)
+    _updated_at = DateTimeField(default=get_brasilia_now)
+    _thread = ReferenceField(Thread, required=True)
+    _pinned = me.BooleanField(default=False)  # Pin status for the post
+    _upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    _downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
+    _score = IntField(default=0)  # Cached score for performance
+    
     
     meta = {
         'collection': 'posts',
-        'ordering': ['-pinned', 'created_at']  # Pinned posts first, then by creation date
+        'ordering': ['-_pinned', '-_score', '_created_at']  # Pinned posts first, then by creation date
     }
 
     @property
     def score(self):
-        """Calculate the net score (upvotes - downvotes)"""
-        return len(self.upvoted_users) - len(self.downvoted_users)
+        """Calculate the net score (upvotes - downvotes)""" 
+        new_score = len(self._upvoted_users) - len(self._downvoted_users)
+        if new_score != self._score:
+            self._score = new_score
+            self.save()
+        return self._score
+    
+    @property
+    def author(self):
+        return self._author
 
-    def to_dict(self):
+    @property
+    def thread(self):
+        return self._thread
+    
+    @property
+    def pinned(self):
+        return self._pinned
+
+    def update_content(self, new_content: str):
+        """Update the content of the post"""
+        self._content = new_content
+        self._updated_at = get_brasilia_now()
+        self.save()
+    
+    def upvote(self, user_id: str):
+        """Add an upvote from a user"""
+        if user_id == self.author.id:
+            return  # Prevent users from upvoting their own posts
+        if user_id in self._downvoted_users:
+            self._downvoted_users.remove(user_id)
+        if user_id in self._upvoted_users:
+            self._upvoted_users.remove(user_id)
+        else:
+            self._upvoted_users.append(user_id)
+        self.save()
+
+    def downvote(self, user_id: str):
+        """Add a downvote from a user"""
+        if user_id == self.author.id:
+            return  # Prevent users from downvoting their own posts
+        if user_id in self._upvoted_users:
+            self._upvoted_users.remove(user_id)
+        if user_id in self._downvoted_users:
+            self._downvoted_users.remove(user_id)
+        else:
+            self._downvoted_users.append(user_id)
+        self.save()
+        return 
+        
+    def pin(self):
+        """Pin the post"""
+        if not self._pinned:
+            self._pinned = True
+            self.save()
+    
+    def unpin(self):
+        """Unpin the post"""
+        if self._pinned:
+            self._pinned = False
+            self.save()
+    
+    def get_thread(self):
+        """Get the thread associated with this post"""
+        return self._thread
+
+    def to_dict(self, user_id=None):
         """Convert the Post document to a dictionary."""
         # Convert UTC stored time to Brasília time for display
-        brasilia_time = utc_to_brasilia(self.created_at)
-        return {
+        post_dict = {
             'id': str(self.id),
-            'thread_id': str(self.thread.id),
-            'author': self.author.username,
-            'content': self.content,
-            'pinned': self.pinned,
+            'thread_id': str(self._thread.id),
+            'author': self._author.username,
+            'content': self._content,
+            'pinned': self._pinned,
             'score': self.score,
-            'created_at': brasilia_time.isoformat() if brasilia_time else None,
+            'created_at': self._created_at,
+            'updated_at': self._updated_at,
         }
+        if user_id:
+            if str(user_id) in self._upvoted_users:
+                post_dict['user_vote'] = 'upvote'
+            elif str(user_id) in self._downvoted_users:
+                post_dict['user_vote'] = 'downvote'
+        return post_dict

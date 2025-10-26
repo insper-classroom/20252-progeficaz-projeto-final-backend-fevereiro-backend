@@ -10,6 +10,7 @@ from email.mime.text import MIMEText
 import pytz
 from dotenv import load_dotenv
 from flask_bcrypt import Bcrypt
+from jinja2 import Template
 
 load_dotenv()
 
@@ -203,21 +204,23 @@ def validation_error_response(errors):
 # email sending utils
 
 
-def send_email(receiver_email, subject, html=""):
+def send_email(to_email, subject, template_html="", context=None):
     """
-    Send an email with HTML content.
+    Send an email with HTML content rendered by Jinja2.
 
     Args:
-        receiver_email (str): The recipient's email address
+        to_email (str): The recipient's email address
         subject (str): The email subject
-        html (str): The HTML content of the email
-
+        template_html (str): Filename of the HTML template inside core/email_templates
+        context (dict): Context used by Jinja2 to render the template (e.g. {'verify_email_link': '...'})
     Returns:
-        tuple: (response_data, status_code) - HTTP status code
+        tuple: (response_data, status_code)
     """
+    if context is None:
+        context = {}
 
     # Validate input parameters
-    if not receiver_email or not subject:
+    if not to_email or not subject:
         return {
             "error": {
                 "code": "VALIDATION_ERROR",
@@ -227,43 +230,67 @@ def send_email(receiver_email, subject, html=""):
         }, 400  # Bad Request
 
     # Validate email format (basic validation)
-
     email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    if not re.match(email_pattern, receiver_email):
+    if not re.match(email_pattern, to_email):
         return {
             "error": {
                 "code": "INVALID_EMAIL_FORMAT",
                 "message": "Invalid email format",
-                "details": f"The email address '{receiver_email}' is not in a valid format",
+                "details": f"The email address '{to_email}' is not in a valid format",
             }
         }, 400  # Bad Request
 
     sender_email = os.environ.get("EMAIL", "example@email.com")
     password = os.environ.get("EMAIL_PASS", "1234567890")
 
+    # Resolve template path relative to this utils.py file
+    base_dir = os.path.join(os.path.dirname(__file__), "email_templates")
+    template_path = os.path.join(base_dir, template_html + ".html")
+
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            template_content = f.read()
+    except FileNotFoundError:
+        return {
+            "error": {
+                "code": "TEMPLATE_NOT_FOUND",
+                "message": "Email template not found",
+                "details": f"Could not find template file '{template_html}' in '{base_dir}'",
+            }
+        }, 400
+
+    # Render template with Jinja2 using provided context (e.g. verify_email_link)
+    try:
+        rendered_html = Template(template_content).render(**context)
+    except Exception as e:
+        return {
+            "error": {
+                "code": "TEMPLATE_RENDER_ERROR",
+                "message": "Failed to render email template",
+                "details": str(e),
+            }
+        }, 500
+
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
     message["From"] = sender_email
-    message["To"] = receiver_email
+    message["To"] = to_email
 
-    # Turn these into plain/html MIMEText objects
-    part = MIMEText(html, "html")
-
-    # Add HTML/plain-text parts to MIMEMultipart message
-    # The email client will try to render the last part first
+    # Attach rendered HTML
+    part = MIMEText(rendered_html, "html")
     message.attach(part)
 
-    # Create secure connection with server and send email
+    # Send email
     try:
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        ssl_context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl_context) as server:
             server.login(sender_email, password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
+            server.sendmail(sender_email, to_email, message.as_string())
 
         return {
             "data": {
                 "email_id": f"email_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "recipient": receiver_email,
+                "recipient": to_email,
                 "subject": subject,
                 "sent_at": datetime.now().isoformat(),
                 "status": "sent",
@@ -285,7 +312,7 @@ def send_email(receiver_email, subject, html=""):
             "error": {
                 "code": "RECIPIENT_REFUSED",
                 "message": "Recipient email address was refused by the server",
-                "details": f"The email address '{receiver_email}' was rejected by the SMTP server",
+                "details": f"The email address '{to_email}' was rejected by the SMTP server",
             }
         }, 422  # Unprocessable Entity
 

@@ -21,25 +21,25 @@ def test_search_endpoint_exists(client, registered_user_token):
     if response.status_code == 200:
         assert isinstance(response.json, (list, dict))
 
-def test_get_filter_config(client):
+def test_get_filter_config(client, registered_user_token):
     """Test the /api/filters/config endpoint as described in README."""
-    response = client.get('/api/filters/config')
+    response = client.get('/api/filters/config', headers={"Authorization": f"Bearer {registered_user_token}"})
     assert response.status_code == 200
     assert isinstance(response.json, dict)
     # The response is not nested under a 'filters' key based on the error log.
     assert 'course' in response.json
 
-def test_get_specific_filter_type(client):
+def test_get_specific_filter_type(client, registered_user_token):
     """Test getting a specific filter type, e.g., /api/filters/semesters."""
-    response = client.get('/api/filters/config?type=semesters')
+    response = client.get('/api/filters/config?type=semesters', headers={"Authorization": f"Bearer {registered_user_token}"})
     assert response.status_code == 200
     assert isinstance(response.json, dict) # Assuming it returns a dict for the specific filter
 
-    response = client.get('/api/filters/config?type=courses')
+    response = client.get('/api/filters/config?type=courses', headers={"Authorization": f"Bearer {registered_user_token}"})
     assert response.status_code == 200
     assert isinstance(response.json, dict)
 
-    response = client.get('/api/filters/config?type=subjects')
+    response = client.get('/api/filters/config?type=subjects', headers={"Authorization": f"Bearer {registered_user_token}"})
     assert response.status_code == 200
     assert isinstance(response.json, dict)
 
