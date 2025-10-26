@@ -30,16 +30,16 @@ def register(data: dict) -> api_response:
     username = email.split("@")[0]
 
     # Validando se usuario já existe
-    if User.objects(email=email):
+    if User.objects(_email=email):
         return error_response("Usuario ja existe", 400)
 
     hashed = bcrypt.generate_password_hash(password).decode("utf-8")
-    new_user = User(username=username, _password=hashed, email=email)
+    new_user = User(_username=username, _password=hashed, _email=email)
     new_user.save()
     auth_token = AuthToken(
-        _user_id=str(new_user.id),
-        token_type="email_verification",
-        expiration_time=3600,  # 1 hora
+        _user=new_user,
+        _token_type="email_verification",
+        _expiration_time=3600,  # 1 hora
     )
     auth_token.save()
 
@@ -63,7 +63,9 @@ def verify_email(data: dict) -> api_response:
     
     # Verificando token
     try:
-        token = AuthToken.objects(id=auth_token, token_type="email_verification").first()
+        token = AuthToken.objects(id=auth_token).first()
+        if not token or token.type != "email_verification":
+            token = None
     except Exception:
         token = None
     if not token:
@@ -79,7 +81,7 @@ def verify_email(data: dict) -> api_response:
 
     # Marcando o token como utilizado
     token.mark_used()
-    
+
     user = token.get_user()
     if not user:
         return error_response("Usuario não encontrado", 404)
@@ -93,24 +95,27 @@ def resend_verification(data: dict) -> api_response:
 
     if not email:
         return error_response("Email é obrigatório", 400)
-    
-    user = User.objects(email=email).first()
+
+    user = User.objects(_email=email).first()
     if not user:
         return error_response("Usuario não encontrado", 404)
     
     if user.is_active():
         return error_response("Email já verificado", 400)
 
-    token = AuthToken.objects(_user_id=str(user.id), token_type="email_verification").order_by("-_created_at").first()
+    token = AuthToken.objects(_user=user).order_by("-_created_at").first()
+    if token and token.type != "email_verification":
+        token = None
+    
     if token and not token.is_used() and not token.is_expired():
         # Se o token existe e não foi usado ou expirado, reutilizamos ele
         auth_token = token
     else:
         # Caso contrário, criamos um novo token
         auth_token = AuthToken(
-            _user_id=str(user.id),
-            token_type="email_verification",
-            expiration_time=3600,  # 1 hora
+            _user=user,
+            _token_type="email_verification",
+            _expiration_time=3600,  # 1 hora
         )
     auth_token.save()
 
@@ -135,7 +140,7 @@ def login(data: dict) -> api_response:
         return error_response("Campos obrigatórios: email, password", 400)
 
     # Validando usuario e senha
-    user = User.objects(email=email).first()
+    user = User.objects(_email=email).first()
     if not user or not user.check_password(password):
         return error_response("Email ou senha inválidos", 401)
     

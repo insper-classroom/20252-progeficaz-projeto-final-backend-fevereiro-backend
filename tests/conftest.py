@@ -79,8 +79,8 @@ def registered_user_token(client, auth_data):
     client.post('/api/auth/register', json=auth_data)
     
     # Verify the user's email
-    user = User.objects(email=auth_data['email']).first()
-    token = AuthToken.objects(_user_id=str(user.id), token_type="email_verification").first()
+    user = User.objects(_email=auth_data['email']).first()
+    token = AuthToken.objects(_user=user, _token_type="email_verification").first()
     client.post('/api/auth/verify-email', json={"authToken": str(token.id)})
     
     # Login the user to get their token
@@ -103,8 +103,8 @@ def other_user_token(client):
     client.post('/api/auth/register', json=other_user_data)
     
     # Verify the other user's email
-    user = User.objects(email=other_user_data['email']).first()
-    token = AuthToken.objects(_user_id=str(user.id), token_type="email_verification").first()
+    user = User.objects(_email=other_user_data['email']).first()
+    token = AuthToken.objects(_user=user, _token_type="email_verification").first()
     client.post('/api/auth/verify-email', json={"authToken": str(token.id)})
     
     # Login the other user to get their token
