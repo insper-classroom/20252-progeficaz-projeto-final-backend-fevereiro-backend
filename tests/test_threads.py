@@ -37,7 +37,7 @@ def test_create_thread_success(client, registered_user_token, thread_data):
     # Verify thread is in the database
     thread = Thread.objects.get(id=response.json['id'])
     assert thread is not None
-    assert thread.title == thread_data['title']
+    assert thread._title == thread_data['title']
 
 def test_create_thread_unauthorized(client, thread_data):
     """Test creating a thread without authentication."""
@@ -53,6 +53,46 @@ def test_create_thread_missing_title(client, registered_user_token, thread_data)
     response = client.post('/api/threads', json=invalid_data, headers=headers)
     assert response.status_code == 400
     assert response.json == {'error': 'Title is required'}
+    
+def test_delete_thread_success(client, registered_user_token, thread_data):
+    """Test successful deletion of a thread."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_response.json['id']
+
+    response = client.delete(f'/api/threads/{thread_id}', headers=headers)
+    assert response.status_code == 200 # No Content
+    
+    
+def test_delete_thread_unauthorized(client, thread_data, registered_user_token):
+    """Test deleting a thread without authentication."""
+    # First create a thread with auth
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_response = client.post('/api/threads', json=thread_data, headers=headers)
+    
+    thread_id = create_response.json['id']
+    # Now try to delete without auth
+    response = client.delete(f'/api/threads/{thread_id}')
+    assert response.status_code == 401 # Or 422 depending on JWT config
+    assert response.json == {'msg': 'Missing Authorization Header'}
+
+def test_delete_thread_forbidden(client, thread_data, registered_user_token, other_user_token):
+    """Test deleting a thread without permission."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_response.json['id']
+
+    # Simulate a different user trying to delete the thread
+    headers = {'Authorization': f'Bearer {other_user_token}'}
+    response = client.delete(f'/api/threads/{thread_id}', headers=headers)
+    assert response.status_code == 403 # Forbidden
+    
+def test_delete_thread_invalid_id(client, registered_user_token):
+    """Test deleting a thread with invalid ID format."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    response = client.delete('/api/threads/invalid-id-format', headers=headers)
+    assert response.status_code == 400
+    assert response.json == {'error': 'Invalid thread ID'}
 
 def test_get_all_threads(client, registered_user_token, thread_data):
     """Test retrieving all threads."""
@@ -70,6 +110,7 @@ def test_get_single_thread(client, registered_user_token, thread_data):
     headers = {'Authorization': f'Bearer {registered_user_token}'}
     create_response = client.post('/api/threads', json=thread_data, headers=headers)
     thread_id = create_response.json['id']
+    print(thread_id)
     
     response = client.get(f'/api/threads/{thread_id}', headers=headers)
     assert response.status_code == 200
@@ -98,7 +139,7 @@ def test_update_thread_success(client, registered_user_token, thread_data):
     
     # Verify update in DB
     updated_thread = Thread.objects.get(id=thread_id)
-    assert updated_thread.description == update_data['description']
+    assert updated_thread._description == update_data['description']
 
 def test_update_thread_unauthorized(client, thread_data, registered_user_token):
     """Test updating a thread without authentication."""
@@ -135,8 +176,8 @@ def test_create_post_success(client, registered_user_token, thread_data, post_da
     # Verify post is in the database and linked to the thread
     post = Post.objects.get(id=response.json['id'])
     assert post is not None
-    assert post.content == post_data['content']
-    assert post.thread.id.__str__() == thread_id
+    assert post._content == post_data['content']
+    assert post._thread.id.__str__() == thread_id
 
 def test_create_post_non_existent_thread(client, registered_user_token, post_data):
     """Test creating a post for a non-existent thread."""
@@ -144,6 +185,69 @@ def test_create_post_non_existent_thread(client, registered_user_token, post_dat
     response = client.post('/api/threads/nonexistentid123456789012/posts', json=post_data, headers=headers)
     assert response.status_code == 400
     assert 'error' in response.json and response.json['error'] == 'Invalid thread ID'
+
+def test_create_post_unauthorized(client, thread_data, post_data, registered_user_token):
+    """Test creating a post without authentication."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_response.json['id']
+    response = client.post(f'/api/threads/{thread_id}/posts', json=post_data)
+    assert response.status_code == 401
+    assert response.json == {'msg': 'Missing Authorization Header'}
+    
+def test_create_post_missing_content(client, registered_user_token, thread_data):
+    """Test creating a post with missing content."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_thread_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_thread_response.json['id']
+    invalid_post_data = {"author": "Test Author"}
+    response = client.post(f'/api/threads/{thread_id}/posts', json=invalid_post_data, headers=headers)
+    assert response.status_code == 400
+    assert response.json == {'error': 'Content is required'}  
+    
+def test_detete_post_success(client, registered_user_token, thread_data, post_data):
+    """Test successful deletion of a post."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_thread_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_thread_response.json['id']
+    create_post_response = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    post_id = create_post_response.json['id']
+    response = client.delete(f'/api/posts/{post_id}', headers=headers)
+    assert response.status_code == 200
+    assert response.json == {'message': 'Post deleted successfully'}
+
+def test_delete_post_unauthorized(client, thread_data, post_data, registered_user_token):
+    """Test deleting a post without authentication."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_thread_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_thread_response.json['id']
+    create_post_response = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    post_id = create_post_response.json['id']
+    
+    response = client.delete(f'/api/posts/{post_id}')
+    assert response.status_code == 401
+    assert response.json == {'msg': 'Missing Authorization Header'}
+
+def test_delete_post_forbidden(client, thread_data, post_data, registered_user_token, other_user_token):
+    """Test deleting a post without permission."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_thread_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_thread_response.json['id']
+    create_post_response = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    post_id = create_post_response.json['id']
+    # Simulate a different user trying to delete the post
+    
+    headers = {'Authorization': f'Bearer {other_user_token}'}
+    response = client.delete(f'/api/posts/{post_id}', headers=headers)
+    assert response.status_code == 403 # Forbidden
+    assert response.json == {'error': 'You do not have permission to delete this post'}
+    
+def test_delete_post_invalid_id(client, registered_user_token):
+    """Test deleting a post with invalid ID format."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    response = client.delete('/api/posts/invalid-id-format', headers=headers)
+    assert response.status_code == 400
+    assert response.json == {'error': 'Invalid post ID'}
 
 def test_get_single_post(client, registered_user_token, thread_data, post_data):
     """Test retrieving a single post by ID."""
@@ -174,7 +278,43 @@ def test_update_post_success(client, registered_user_token, thread_data, post_da
     
     # Verify update in DB
     updated_post = Post.objects.get(id=post_id)
-    assert updated_post.content == update_data['content']
+    assert updated_post._content == update_data['content']
+    
+def test_update_post_unauthorized(client, thread_data, post_data, registered_user_token):
+    """Test updating a post without authentication."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_thread_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_thread_response.json['id']
+    create_post_response = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    post_id = create_post_response.json['id']
+    
+    update_data = {"content": "Attempted unauthorized update."}
+    # No auth header
+    response = client.put(f'/api/posts/{post_id}', json=update_data)
+    assert response.status_code == 401 # Or 422 depending on JWT config
+    assert response.json == {'msg': 'Missing Authorization Header'}
+    
+def test_update_post_forbidden(client, thread_data, post_data, registered_user_token, other_user_token):
+    """Test updating a post without permission."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    create_thread_response = client.post('/api/threads', json=thread_data, headers=headers)
+    thread_id = create_thread_response.json['id']
+    create_post_response = client.post(f'/api/threads/{thread_id}/posts', json=post_data, headers=headers)
+    post_id = create_post_response.json['id']
+    # Simulate a different user trying to update the post
+    headers = {'Authorization': f'Bearer {other_user_token}'}
+    update_data = {"content": "Attempted forbidden update."}
+    response = client.put(f'/api/posts/{post_id}', json=update_data, headers=headers)
+    assert response.status_code == 403 # Forbidden
+    assert response.json == {'error': 'You do not have permission to update this post'}
+    
+def test_update_post_invalid_id(client, registered_user_token):
+    """Test updating a post with invalid ID format."""
+    headers = {'Authorization': f'Bearer {registered_user_token}'}
+    update_data = {"content": "Update with invalid ID."}
+    response = client.put('/api/posts/invalid-id-format', json=update_data, headers=headers)
+    assert response.status_code == 400
+    assert response.json == {'error': 'Invalid post ID'}
 
 def test_thread_post_vote_lifecycle(client, registered_user_token, thread_data, post_data):
     """Create thread, create post, vote flow (upvote/duplicate/remove/downvote)."""
