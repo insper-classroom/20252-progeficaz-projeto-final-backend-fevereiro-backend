@@ -1,11 +1,11 @@
-from mongoengine import Document, StringField, BooleanField, DateTimeField, IntField
+from mongoengine import Document, StringField, BooleanField, DateTimeField, IntField, ReferenceField
 from datetime import datetime, timedelta
 from core.utils import bcrypt
 
 class User(Document):
     """User model"""
-    username = StringField(required=True, unique=True)
-    email = StringField(required=True, unique=True)
+    _username = StringField(required=True, unique=True)
+    _email = StringField(required=True, unique=True)
     _password = StringField(required=True)
     _created_at = DateTimeField(required=True, default=datetime.now)
     _updated_at = DateTimeField(required=True, default=datetime.now)
@@ -15,13 +15,21 @@ class User(Document):
         "collection": "users",
         "allow_inheritance": True
     }
+    
+    @property
+    def email(self):
+        return self._email
+    
+    @property
+    def username(self):
+        return self._username
 
     def to_dict(self):
 
         return {
             "id": str(self.id),
-            "username": self.username,
-            "email": self.email,
+            "username": self._username,
+            "email": self._email,
         }
 
     def set_and_hash_password(self, new_password: str):
@@ -48,9 +56,9 @@ class User(Document):
     
 class AuthToken(Document):
     """Authentication Token model"""
-    _user_id = StringField(required=True)
-    token_type = StringField(required=True)
-    expiration_time = IntField(required=True)  # in seconds
+    _user = ReferenceField(User, required=True)
+    _token_type = StringField(required=True)
+    _expiration_time = IntField(required=True)  # in seconds
     _created_at = DateTimeField(required=True, default=datetime.now)
     _used_at = DateTimeField()
     _expired_at = DateTimeField()
@@ -66,16 +74,20 @@ class AuthToken(Document):
         return {
             "id": str(self.id),
             "user_id": self._user_id,
-            "token_type": self.token_type,
+            "token_type": self._token_type,
         }
-        
-    def get_user(self):
-        return User.objects.get(id=self._user_id)
     
+    @property
+    def type(self):
+        return self._token_type
+    
+    def get_user(self):
+        return self._user
+
     def is_expired(self):
         if self._expired_at:
             return True
-        expiration_datetime = self._created_at + timedelta(seconds=self.expiration_time)
+        expiration_datetime = self._created_at + timedelta(seconds=self._expiration_time)
         if datetime.now() > expiration_datetime:
             self._expired_at = expiration_datetime
             self.save()
