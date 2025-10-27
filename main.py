@@ -54,12 +54,14 @@ from api.search.routes import search_bp  # noqa: E402
 
 # Blueprints
 from api.threads.routes import threads_bp  # noqa: E402
+from api.reports.routes import reports_bp  # noqa: E402
 
 # Register blueprints
 app.register_blueprint(threads_bp, url_prefix="/api")
 app.register_blueprint(search_bp, url_prefix="/api")
 app.register_blueprint(health_bp, url_prefix="/health")
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
+app.register_blueprint(reports_bp, url_prefix="/api")
 
 
 # Global error handlers

@@ -102,6 +102,13 @@ The API will be available at http://localhost:5000/api
 - `GET /api/filters/<str:filter_type>' - get the filter configuration for a type`
   - Available types = [semesters, courses, subjects]
 
+### Reports (Denúncias)
+- `POST /api/reports` - create a new report (requires JWT token)
+  - Body: `{content_type: "thread"|"post", content_id: "id", report_type: "sexual"|"violence"|"discrimination"|"scam"|"self_harm"|"spam"|"other", description?: "text"}`
+  - `description` is required when `report_type` is "other"
+- `GET /api/reports` - list all reports (requires JWT token)
+- `GET /api/reports/<id>` - get specific report (requires JWT token)
+
 ### Thread Model
 Threads now support voting and an optional `description` field with the following structure:
 ```json
