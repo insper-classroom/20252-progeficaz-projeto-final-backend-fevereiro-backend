@@ -65,12 +65,20 @@ The API will be available at http://localhost:5000/api
   - Example: `/api/search/threads?q=algoritmo&semester=3&courses=cc`
 
 ### Threads
-- `GET /api/threads` - list threads
-- `POST /api/threads` - create thread `{title, description?}`
+- `GET /api/threads` - list threads with optional filters
+  - Query parameters:
+    - `semester` (optional): filter by semester (1-10)
+    - `courses` (optional): filter by course IDs (can be multiple)
+    - `subjects` (optional): filter by subject names (can be multiple)
+  - Example: `/api/threads?semester=3&courses=cc&subjects=Programação Eficaz`
+- `POST /api/threads` - create thread `{title, description?, semester, courses[], subjects[]}`
   - `description` is optional
+  - `semester` is required (1-10)
+  - `courses` is optional array of course IDs
+  - `subjects` is required array of subject names
 - `GET /api/threads/<id>` - get thread with posts
-- `PUT /api/threads/<id>` - update thread `{title?, description?}`
-  - Both fields are optional, only provided fields will be updated
+- `PUT /api/threads/<id>` - update thread `{title?, description?, semester?, courses?, subjects?}`
+  - All fields are optional, only provided fields will be updated
 
 ### Posts
 - `GET /api/posts/<id>` - get specific post  
@@ -101,6 +109,13 @@ The API will be available at http://localhost:5000/api
 - `GET /api/filters/config' - get the complete filter configuration`
 - `GET /api/filters/<str:filter_type>' - get the filter configuration for a type`
   - Available types = [semesters, courses, subjects]
+
+### Reports (Denúncias)
+- `POST /api/reports` - create a new report (requires JWT token)
+  - Body: `{content_type: "thread"|"post", content_id: "id", report_type: "sexual"|"violence"|"discrimination"|"scam"|"self_harm"|"spam"|"other", description?: "text"}`
+  - `description` is required when `report_type` is "other"
+- `GET /api/reports` - list all reports (requires JWT token)
+- `GET /api/reports/<id>` - get specific report (requires JWT token)
 
 ### Thread Model
 Threads now support voting and an optional `description` field with the following structure:

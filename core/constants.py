@@ -83,3 +83,14 @@ FILTER_CONFIG: dict[str, dict] = {
         "options": SUBJECTS,
     },
 }
+
+# Report Types Configuration
+REPORT_TYPES: list[dict] = [
+    {"id": "sexual", "name": "Conteúdo Sexual", "description": "Conteúdo de natureza sexual explícita"},
+    {"id": "violence", "name": "Violência", "description": "Conteúdo violento ou ameaçador"},
+    {"id": "discrimination", "name": "Discriminação", "description": "Discurso de ódio ou discriminatório"},
+    {"id": "scam", "name": "Enganoso/Golpe", "description": "Conteúdo fraudulento ou enganoso"},
+    {"id": "self_harm", "name": "Auto-mutilação/Suicídio", "description": "Conteúdo relacionado a auto-mutilação ou suicídio"},
+    {"id": "spam", "name": "Spam", "description": "Conteúdo repetitivo ou não solicitado"},
+    {"id": "other", "name": "Outros", "description": "Outro tipo de problema (descreva)"},
+]

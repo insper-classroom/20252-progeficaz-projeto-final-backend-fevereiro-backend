@@ -9,7 +9,7 @@ import os
 def register(data: dict) -> api_response:
     password = data.get("password")
     email = data.get("email")
-    verify_email_link = os.getenv("FRONT_END_URL", "http://localhost:3000")
+    verify_email_link = os.getenv("FRONT_END_URL", "http://localhost:5173")
 
     # Validando informações faltantes
     if not all([email, password]):

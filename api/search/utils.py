@@ -71,14 +71,14 @@ def search_subjects(query, course_ids=None, semester_id=None) -> list[str]:
 
 def search_threads_by_title(query: str, semester_id=None, course_ids=None, subject_ids=None):
     """Search threads by title with optional filters."""
-    from api.threads.models import Thread
+    from api.threads.models import Thread, Post
     
     if not query or not query.strip():
         return []
     
     # Build the search query
     search_query = {
-        'title': {'$regex': query, '$options': 'i'}  # Case-insensitive search
+        '_title': {'$regex': query, '$options': 'i'}  # Case-insensitive search - use _title not title
     }
     
     # Add optional filters
@@ -92,20 +92,25 @@ def search_threads_by_title(query: str, semester_id=None, course_ids=None, subje
         search_query['subjects'] = {'$in': subject_ids}
     
     # Execute search
-    threads = Thread.objects(__raw__=search_query).order_by('-created_at')
+    threads = Thread.objects(__raw__=search_query).order_by('-_created_at')
     
     # Format results
     results = []
     for thread in threads:
+        # Count posts for this thread
+        post_count = Post.objects(_thread=thread).count()
+        
         results.append({
             'id': str(thread.id),
-            'title': thread.title,
-            'description': thread.description,
+            'title': thread._title,
+            'description': thread._description if thread._description else '',
+            'author': thread.author.username if thread.author else 'Unknown',
             'semester': thread.semester,
-            'courses': thread.courses,
-            'subjects': thread.subjects,
-            'created_at': thread.created_at.isoformat(),
-            'post_count': len(thread.posts) if hasattr(thread, 'posts') else 0
+            'courses': thread.courses if thread.courses else [],
+            'subjects': thread.subjects if thread.subjects else [],
+            'score': thread.score,
+            'created_at': thread._created_at.isoformat() if thread._created_at else None,
+            'post_count': post_count
         })
     
     return results

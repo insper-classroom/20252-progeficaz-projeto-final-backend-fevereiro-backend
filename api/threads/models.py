@@ -77,25 +77,32 @@ class Thread(Document): #perguntas
     
     def to_dict(self, user_id=None):
         """Convert the Thread document to a dictionary."""
-        # Convert UTC stored time to Brasília time for display
-        thread_dict = {
-            'id': str(self.id),
-            'author': self.author.username,
-            'title': self._title,
-            'description': self._description,
-            'semester': self.semester,
-            'courses': self.courses,
-            'subjects': self.subjects,
-            'score': self.score,
-            'created_at': self._created_at,
-        }
-        if user_id:
-            if str(user_id) in self._upvoted_users:
-                thread_dict['user_vote'] = 'upvote'
-            elif str(user_id) in self._downvoted_users:
-                thread_dict['user_vote'] = 'downvote'
-        return thread_dict
-
+        try:
+            # Convert UTC stored time to Brasília time for display
+            thread_dict = {
+                'id': str(self.id),
+                'author': self.author.username if self.author else 'Unknown',
+                'title': self._title,
+                'description': self._description if self._description else '',
+                'semester': self.semester,
+                'courses': self.courses if self.courses else [],
+                'subjects': self.subjects if self.subjects else [],
+                'score': self.score,
+                'created_at': self._created_at.isoformat() if self._created_at else None,
+            }
+            if user_id:
+                if str(user_id) in self._upvoted_users:
+                    thread_dict['user_vote'] = 'upvote'
+                elif str(user_id) in self._downvoted_users:
+                    thread_dict['user_vote'] = 'downvote'
+                else:
+                    thread_dict['user_vote'] = None
+            return thread_dict
+        except Exception as e:
+            print(f"Error in Thread.to_dict: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
 class Post(Document): #respostas
     _content = StringField(required=True)
@@ -184,20 +191,28 @@ class Post(Document): #respostas
 
     def to_dict(self, user_id=None):
         """Convert the Post document to a dictionary."""
-        # Convert UTC stored time to Brasília time for display
-        post_dict = {
-            'id': str(self.id),
-            'thread_id': str(self._thread.id),
-            'author': self._author.username,
-            'content': self._content,
-            'pinned': self._pinned,
-            'score': self.score,
-            'created_at': self._created_at,
-            'updated_at': self._updated_at,
-        }
-        if user_id:
-            if str(user_id) in self._upvoted_users:
-                post_dict['user_vote'] = 'upvote'
-            elif str(user_id) in self._downvoted_users:
-                post_dict['user_vote'] = 'downvote'
-        return post_dict
+        try:
+            # Convert UTC stored time to Brasília time for display
+            post_dict = {
+                'id': str(self.id),
+                'thread_id': str(self._thread.id) if self._thread else None,
+                'author': self._author.username if self._author else 'Unknown',
+                'content': self._content,
+                'pinned': self._pinned,
+                'score': self.score,
+                'created_at': self._created_at.isoformat() if self._created_at else None,
+                'updated_at': self._updated_at.isoformat() if self._updated_at else None,
+            }
+            if user_id:
+                if str(user_id) in self._upvoted_users:
+                    post_dict['user_vote'] = 'upvote'
+                elif str(user_id) in self._downvoted_users:
+                    post_dict['user_vote'] = 'downvote'
+                else:
+                    post_dict['user_vote'] = None
+            return post_dict
+        except Exception as e:
+            print(f"Error in Post.to_dict: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
