@@ -13,7 +13,12 @@ threads_bp = Blueprint("threads", __name__)
 @threads_bp.route("/threads", methods=["GET"])
 @jwt_required()
 def list_threads():
-    """List all threads"""
+    """List all threads with optional filters
+    Query params:
+    - semester (int): Filter by semester (1-10)
+    - courses (list): Filter by course IDs (can be multiple)
+    - subjects (list): Filter by subject names (can be multiple)
+    """
     current_user = get_jwt_identity()
     return vi.list_threads(current_user)
 
