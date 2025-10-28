@@ -1,4 +1,5 @@
 # Flask application setup
+from datetime import timedelta
 import json
 
 # Environment variables
@@ -25,6 +26,7 @@ bcrypt.init_app(app)
 
 # authentication requirements
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 
 # MongoDB configuration
 mongodb_uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/forum_db")
