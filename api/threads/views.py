@@ -6,7 +6,7 @@ from core.types import api_response
 from core.utils import success_response, error_response, validation_error_response
 from typing import Literal
 from bson import ObjectId
-# from core.moderation import verificar_thread, verificar_post
+from core.moderation import verificar_thread, verificar_post
 
 # THREADS views
 def list_threads(current_user: str) -> api_response:
@@ -65,10 +65,10 @@ def create_thread(data: dict, current_user: str) -> api_response:
     except (ValueError, IndexError):
         return error_response('Semester must be a valid number', 400)
 
-    # # Verificar moderação de conteúdo
-    # is_safe, moderation_message = verificar_thread(title, description)
-    # if not is_safe:
-    #     return error_response(moderation_message, 400)
+    # Verificar moderação de conteúdo
+    is_safe, moderation_message = verificar_thread(title, description)
+    if not is_safe:
+        return error_response(moderation_message, 400)
     
     try:
         thread = Thread(
@@ -91,17 +91,17 @@ def update_thread_by_id(thread_id: str, data: dict, current_user: str) -> api_re
     try:
         thread = Thread.objects.get(id=thread_id, _author=ObjectId(current_user))
 
-        # # Verificar moderação dos campos que serão atualizados
-        # title_to_check = data.get('title', '').strip() if 'title' in data else None
-        # description_to_check = data.get('description', '').strip() if 'description' in data else None
+        # Verificar moderação dos campos que serão atualizados
+        title_to_check = data.get('title', '').strip() if 'title' in data else None
+        description_to_check = data.get('description', '').strip() if 'description' in data else None
         
-        # if title_to_check or description_to_check:
-        #     is_safe, moderation_message = verificar_thread(
-        #         title_to_check or thread.title,
-        #         description_to_check if 'description' in data else thread.description
-        #     )
-        #     if not is_safe:
-        #         return error_response(moderation_message, 400)
+        if title_to_check or description_to_check:
+            is_safe, moderation_message = verificar_thread(
+                title_to_check or thread._title,
+                description_to_check if 'description' in data else thread._description
+            )
+            if not is_safe:
+                return error_response(moderation_message, 400)
         
         # Update fields if provided
         
@@ -156,10 +156,10 @@ def create_post(thread_id: str, data: dict, current_user: str) -> api_response:
         if not content:
             return error_response('Content is required', 400)
 
-        # # Verificar moderação do conteúdo
-        # is_safe, moderation_message = verificar_post(content)
-        # if not is_safe:
-        #     return error_response(moderation_message, 400)
+        # Verificar moderação do conteúdo
+        is_safe, moderation_message = verificar_post(content)
+        if not is_safe:
+            return error_response(moderation_message, 400)
 
         post = Post(_thread=ObjectId(thread_id), _author=ObjectId(current_user), _content=content)
         post.save()
@@ -180,12 +180,11 @@ def update_post_by_id(post_id: str, data: dict, current_user: str) -> api_respon
 
         # Verificar moderação do conteúdo se estiver sendo atualizado
         if 'content' in data:
-            # content_to_check = data.get('content', '').strip()
-            # if content_to_check:
-            #     is_safe, moderation_message = verificar_post(content_to_check)
-            #     if not is_safe:
-            #         return error_response(moderation_message, 400)
-            post.content = data['content']
+            content_to_check = data.get('content', '').strip()
+            if content_to_check:
+                is_safe, moderation_message = verificar_post(content_to_check)
+                if not is_safe:
+                    return error_response(moderation_message, 400)
         
         post.update_content(data['content'])
 
