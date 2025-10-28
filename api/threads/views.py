@@ -10,18 +10,42 @@ from core.moderation import verificar_thread, verificar_post
 
 # THREADS views
 def list_threads(current_user: str) -> api_response:
-    """List all threads"""
+    """List all threads with optional filters"""
     try:
+        from flask import request
+        
+        # Get filter parameters
+        semester = request.args.get('semester', type=int)
+        courses = request.args.getlist('courses')
+        subjects = request.args.getlist('subjects')
+        
         # Build query
-        threads = Thread.objects
+        filters = {}
+        
+        if semester:
+            filters['semester'] = semester
+        
+        if courses:
+            filters['courses__in'] = courses
+        
+        if subjects:
+            filters['subjects__in'] = subjects
+        
+        # Apply filters
+        if filters:
+            threads = Thread.objects(**filters)
+        else:
+            threads = Thread.objects()
        
         data = {'threads': [tr.to_dict(user_id=current_user) for tr in threads]}
-        print(data)
         
         return success_response(data=data, status_code=200)
     
     except Exception as e:
-        return error_response(f"Failed to retrieve threads {e}", 500)
+        import traceback
+        print(f"Error in list_threads: {e}")
+        traceback.print_exc()
+        return error_response(f"Failed to retrieve threads: {str(e)}", 500)
 
 def get_thread_by_id(thread_id: str, current_user: str) -> api_response:
     """Get a specific thread by ID along with its posts"""
