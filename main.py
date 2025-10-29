@@ -12,7 +12,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 # JSON handling
-from core.utils import bcrypt, jwt, update_index_json
+from core.utils import bcrypt, jwt, update_index_json, reset_all_users_points_if_needed
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +49,14 @@ try:
     print("Index JSON file updated successfully.")
 except Exception as e:
     print(f"Failed to update index JSON file: {e}")
+
+try:
+    # Check and reset user points if a new month has started
+    reset_all_users_points_if_needed()
+    print("User points checked and reset if needed.")
+except Exception as e:
+    print(f"Failed to check/reset user points: {e}")
+
 
 from api.authentication.routes import auth_bp  # noqa: E402
 from api.health.routes import health_bp  # noqa: E402
@@ -97,4 +105,6 @@ def index():
 
 
 if __name__ == "__main__":
+    
     app.run(host="0.0.0.0", port=5000, debug=True)
+
