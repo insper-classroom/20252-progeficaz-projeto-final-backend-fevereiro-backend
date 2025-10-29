@@ -341,3 +341,23 @@ from flask_jwt_extended import JWTManager
 
 bcrypt = Bcrypt()
 jwt = JWTManager()
+
+def reset_all_users_points_if_needed():
+    """Check and reset points for all users on the 1st of each month"""
+    from api.authentication.models import User
+    from datetime import datetime
+    
+    try:
+        now = datetime.now()
+        users = User.objects.all()
+        
+        for user in users:
+            last_reset = user._last_reset_date
+            # Reset if we're in a new month compared to last reset
+            if (last_reset.year < now.year or 
+                (last_reset.year == now.year and last_reset.month < now.month)):
+                user._points = 0
+                user._last_reset_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                user.save()
+    except Exception as e:
+        print(f"Error resetting user points: {e}")
