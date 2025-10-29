@@ -9,7 +9,7 @@ import os
 def register(data: dict) -> api_response:
     password = data.get("password")
     email = data.get("email")
-    verify_email_link = os.getenv("FRONT_END_URL", "http://localhost:3000")
+    verify_email_link = os.getenv("FRONT_END_URL", "http://localhost:5173")
 
     # Validando informações faltantes
     if not all([email, password]):
@@ -126,7 +126,7 @@ def resend_verification(data: dict) -> api_response:
         context={"verification_link": f"{verify_email_link}/verify?authToken={auth_token.id}"},
     )
 
-    if not result:
+    if not result[1] == 200:
         return error_response("Erro ao enviar email de verificação", 500)
 
     return success_response(message="Email de verificação reenviado com sucesso!", status_code=200)
