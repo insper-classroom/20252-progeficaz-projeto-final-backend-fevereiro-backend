@@ -105,8 +105,6 @@ def index():
 
 
 if __name__ == "__main__":
-    try:
-        app.run(host="0.0.0.0", port=5000, debug=True)
-    finally:
-        # Shut down the scheduler when exiting the app
-        scheduler.shutdown()
+    
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
