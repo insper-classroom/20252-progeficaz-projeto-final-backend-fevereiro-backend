@@ -1,12 +1,16 @@
-from flask import request, jsonify
-from api.threads.models import Thread, Post
+from flask import request, jsonify, Response
+from api.threads.models import Thread, Post, ThreadImage
 from api.authentication.models import User
 from mongoengine.errors import DoesNotExist, ValidationError
 from core.types import api_response
-from core.utils import success_response, error_response, validation_error_response
+from core.utils import success_response, error_response, allowed_filename
+from werkzeug.utils import secure_filename
 from typing import Literal
 from bson import ObjectId
 from core.moderation import verificar_thread, verificar_post
+from gridfs import GridFS
+from bson.objectid import ObjectId
+from core.constants import MAX_AVATAR_BYTES
 
 # THREADS views
 def list_threads(current_user: str) -> api_response:
@@ -335,3 +339,173 @@ def unpin_post_by_id(post_id: str, current_user: str) -> api_response:
         return error_response('Post not found', 404)
     except Exception as e:
         return error_response('Invalid post ID or unpin failed', 400)
+    
+# THREAD IMAGE views
+
+def upload_thread_images(thread_id, current_user, files) -> api_response:
+    """
+    multipart/form-data with file field "image"
+    """
+    if not files or len(files) == 0:
+        return error_response("No file provided", 400)
+
+    thread = Thread.objects(id=ObjectId(thread_id)).first()
+    if not thread:
+        return error_response("Thread not found", 404)
+
+    if str(thread.author.id) != current_user:
+        return error_response("You do not have permission to upload images to this thread", 403)
+
+    erros = []
+    for file in files:
+        filename = file.filename or ""
+        if not allowed_filename(filename):
+            erros.append("Unsupported file type. Allowed: png, jpg, jpeg, gif, webp")
+            continue
+
+        # Protect against huge uploads (we check size by peeking into stream)
+        file.stream.seek(0, 2)  # seek to end
+        size = file.stream.tell()
+        file.stream.seek(0)     # rewind
+
+        if size > MAX_AVATAR_BYTES:
+            erros.append("File too large (max 5 MB)")
+            continue
+
+        result = thread.attach_image(file.stream, secure_filename(file.filename), file.mimetype)
+        if "error" in result:
+            erros.append(result["error"])
+    if erros:
+        return error_response("Image upload errors occurred: " + ", ".join(erros), 400)
+        
+    return success_response(message="Images uploaded successfully", data={"thread_id": str(thread.id)})
+
+
+def get_thread_image(image_id: str, current_user: str) -> api_response:
+    """
+    Streams all images stored in GridFS for a post
+    """
+    try:
+        image = ThreadImage.objects(id=ObjectId(image_id)).first()
+        if not image:
+            return error_response("Image not found", 404)
+
+        # Check if current user is authorized to view the image
+        thread = image.thread
+        if str(thread.author.id) != current_user:
+            return error_response("You do not have permission to view this image", 403)
+
+        return Response(image.image.read(), mimetype=image.image.content_type)
+    except Exception as e:
+        return error_response("Failed to retrieve image", 500)
+    except Exception as e:
+        pass
+    
+def list_thread_images(thread_id: str, current_user: str) -> api_response:
+    """Get all images uploaded to a specific thread"""
+    thread = Thread.objects(id=ObjectId(thread_id)).first()
+    if not thread:
+        return error_response("Thread not found", 404)
+
+    images = ThreadImage.objects(thread=thread)
+    image_list = []
+    for img in images:
+        image_list.append({
+            "id": str(img.id),
+            "filename": getattr(img.image, "filename", ""),
+            "content_type": getattr(img.image, "content_type", ""),
+        })
+
+    return success_response(data={"images": image_list}, status_code=200)
+
+def delete_thread_image(image_id: str, current_user: str) -> api_response:
+    """Delete a specific image from a thread"""
+    try:
+        image = ThreadImage.objects(id=ObjectId(image_id)).first()
+        if not image:
+            return error_response("Image not found", 404)
+
+        thread = image.thread
+        if str(thread.author.id) != current_user:
+            return error_response("You do not have permission to delete this image", 403)
+
+        image.delete()
+        return success_response(message="Image deleted successfully", status_code=200)
+    except Exception as e:
+        return error_response("Failed to delete image", 500)
+    
+# USER views
+
+def get_user_avatar(user_id: str, current_user: str) -> api_response:
+    """
+    GET /api/users/<user_id>/avatar
+    returns the avatar image binary with correct content-type
+    """
+    user = User.objects(id=ObjectId(user_id)).first()
+    if not user:
+        return error_response("User not found", 404)
+
+    avatar = user.get_avatar()
+    if not avatar:
+        return error_response("No avatar set", 404)
+
+    try:
+        data = avatar.read()
+        content_type = getattr(avatar, "content_type", "application/octet-stream")
+        return Response(data, mimetype=content_type)
+    except Exception:
+        return error_response("Failed to read avatar", 500)
+    
+def upload_avatar(current_user, files):
+    """
+    POST /api/users/avatar
+    multipart/form-data with file field "avatar"
+    """
+    if not files:
+        return error_response("No file provided", 400)
+    
+    if len(files) > 1:
+        return error_response("Only one avatar file can be uploaded", 400)
+
+    file = files[0]
+
+    filename = file.filename or ""
+    if not allowed_filename(filename):
+        return error_response("Unsupported file type. Allowed: png, jpg, jpeg, gif, webp", 400)
+    
+    # Protect against huge uploads (we check size by peeking into stream)
+    file.stream.seek(0, 2)  # seek to end
+    size = file.stream.tell()
+    file.stream.seek(0)     # rewind
+    if size > MAX_AVATAR_BYTES:
+        return error_response("File too large (max 5 MB)", 400)
+
+    # current_user can be obtained from identity or passed by view decorator
+    user = User.objects(id=current_user).first()
+    if not user:
+        return error_response("User not found", 404)
+
+    filename = secure_filename(file.filename)
+    result = user.set_avatar(file.stream, filename=filename, content_type=file.mimetype)
+    if "error" in result:
+        return error_response(result["error"], 500)
+
+    return success_response(message="Avatar uploaded", data={"user_id": str(user.id)})
+
+def delete_avatar(current_user) -> api_response:
+    """Delete current user's avatar"""
+    user = User.objects(id=current_user).first()
+    if not user:
+        return error_response("User not found", 404)
+
+    if not user._avatar_image:
+        return error_response("No avatar to delete", 404)
+
+    try:
+        user._avatar_image.delete()
+        user._avatar_image = None
+        user._avatar_image_id = None
+        user.save()
+        return success_response(message="Avatar deleted successfully", status_code=200)
+    except Exception as e:
+        return error_response("Failed to delete avatar", 500)

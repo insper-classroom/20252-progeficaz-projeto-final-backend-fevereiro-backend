@@ -1,12 +1,28 @@
-from mongoengine import Document, StringField, DateTimeField, ReferenceField, ListField, IntField, ReferenceField
-import mongoengine as me
+from io import BytesIO
+from tkinter import CASCADE
+from mongoengine import (
+    Document,
+    StringField,
+    DateTimeField,
+    ReferenceField,
+    ListField, 
+    IntField,
+    ReferenceField,
+    ListField,
+    ImageField,
+    NULLIFY,
+    BooleanField,
+    EmbeddedDocument,
+    EmbeddedDocumentField
+)
 from core.utils import get_brasilia_now, utc_to_brasilia
 from api.authentication.models import User
+from gridfs import GridFS
 
 class Thread(Document): #perguntas
     _title = StringField(max_length=200, required=True)
     _description = StringField(max_length=500)  # Optional description field
-    _author = ReferenceField(User, required=True)
+    _author = ReferenceField(User, required=True, reverse_delete_rule=NULLIFY)
     
     # Filter fields (optional for backward compatibility)
     semester = IntField(min_value=1, max_value=10, default=1)  # Default to 1st semester
@@ -49,6 +65,8 @@ class Thread(Document): #perguntas
                 setattr(self, f'_{field}' if field in ['title', 'description'] else field, data[field])
         self._updated_at = get_brasilia_now()
         self.save()
+        
+    # Voting methods
     
     def upvote(self, user_id: str):
         """Add an upvote from a user"""
@@ -70,6 +88,32 @@ class Thread(Document): #perguntas
             self._downvoted_users.append(user_id)
         self.save()
         return 
+    
+    # Image management methods
+    def attach_image(self, fileobj, filename: str, content_type: str):
+        """Attach an image to the post"""
+        try:
+            # Accept bytes (convert to BytesIO) or file-like
+            if isinstance(fileobj, (bytes, bytearray)):
+                file_stream = BytesIO(fileobj)
+            else:
+                # assume fileobj is file-like and at correct position
+                file_stream = fileobj
+                
+            # put the new file; many GridFS proxies accept a file-like object
+            img = ThreadImage()
+            img.thread = self
+            img.image.put(
+                file_stream,
+                filename=filename,
+                content_type=content_type,
+            )
+            img.save()
+            self._updated_at = get_brasilia_now()
+            self.save()
+            return {"message": "Image updated successfully"}
+        except Exception as e:
+            return {"error": str(e)}
     
     def to_dict(self, user_id=None):
         """Convert the Thread document to a dictionary."""
@@ -106,12 +150,11 @@ class Post(Document): #respostas
     _created_at = DateTimeField(default=get_brasilia_now)
     _updated_at = DateTimeField(default=get_brasilia_now)
     _thread = ReferenceField(Thread, required=True)
-    _pinned = me.BooleanField(default=False)  # Pin status for the post
+    _pinned = BooleanField(default=False)  # Pin status for the post
     _upvoted_users = ListField(StringField(), default=list)  # Track users who have voted
     _downvoted_users = ListField(StringField(), default=list)  # Track users who have voted
     _score = IntField(default=0)  # Cached score for performance
-    
-    
+
     meta = {
         'collection': 'posts',
         'ordering': ['-_pinned', '-_score', '_created_at']  # Pinned posts first, then by creation date
@@ -181,6 +224,7 @@ class Post(Document): #respostas
         """Get the thread associated with this post"""
         return self._thread
 
+
     def to_dict(self, user_id=None):
         """Convert the Post document to a dictionary."""
         try:
@@ -208,3 +252,7 @@ class Post(Document): #respostas
             import traceback
             traceback.print_exc()
             raise
+
+class ThreadImage(Document):
+    thread = ReferenceField(Thread, reverse_delete_rule=CASCADE)
+    image = ImageField(required=True)

@@ -6,6 +6,7 @@ import ssl
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from core.constants import ALLOWED_EXTENSIONS
 
 import pytz
 from dotenv import load_dotenv
@@ -361,3 +362,10 @@ def reset_all_users_points_if_needed():
                 user.save()
     except Exception as e:
         print(f"Error resetting user points: {e}")
+        
+        
+def allowed_filename(filename):
+    if not filename:
+        return False
+    name = filename.rsplit(".", 1)
+    return len(name) == 2 and name[1].lower() in ALLOWED_EXTENSIONS
