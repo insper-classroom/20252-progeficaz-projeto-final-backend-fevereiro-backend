@@ -1,11 +1,11 @@
-from mongoengine import Document, StringField, BooleanField, DateTimeField, IntField, ReferenceField
+from mongoengine import Document, StringField, BooleanField, DateTimeField, IntField, ReferenceField, EmailField
 from datetime import datetime, timedelta
 from core.utils import bcrypt
 
 class User(Document):
     """User model"""
     _username = StringField(required=True, unique=True)
-    _email = StringField(required=True, unique=True)
+    _email = EmailField(required=True, unique=True)
     _password = StringField(required=True)
     _created_at = DateTimeField(required=True, default=datetime.now)
     _updated_at = DateTimeField(required=True, default=datetime.now)
