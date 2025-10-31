@@ -102,17 +102,7 @@ def delete_post(post_id):
 def upvote_post(obj_type: Literal["threads", "posts"], post_id: str):
     """Upvote a specific post or thread"""
     current_user = get_jwt_identity()
-    result = vi.upvote_by_id(post_id, current_user,obj_type)
-    if result:
-        if obj_type == "threads":
-            thread = vi.get_thread_by_id(post_id, current_user)
-            if thread:
-                thread.author.increment_points(1)
-        elif obj_type == "posts":
-            post = vi.get_post_by_id(post_id, current_user)
-            if post:
-                post.author.increment_points(1)
-    return result
+    return vi.upvote_by_id(post_id, current_user, obj_type)
 
 
 @threads_bp.route("/<obj_type>/<post_id>/downvote", methods=["POST"])
@@ -120,17 +110,7 @@ def upvote_post(obj_type: Literal["threads", "posts"], post_id: str):
 def downvote_post(obj_type: Literal["threads", "posts"], post_id: str):
     """Downvote a specific post or thread"""
     current_user = get_jwt_identity()
-    result = vi.downvote_by_id(post_id, current_user,obj_type)
-    if result:
-        if obj_type == "threads":
-            thread = vi.get_thread_by_id(post_id, current_user)
-            if thread:
-                thread.author.increment_points(-1)
-        elif obj_type == "posts":
-            post = vi.get_post_by_id(post_id, current_user)
-            if post:
-                post.author.increment_points(-1)
-    return result
+    return vi.downvote_by_id(post_id, current_user, obj_type)
 
 
 # POST PIN endpoints
