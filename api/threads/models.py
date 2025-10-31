@@ -52,8 +52,6 @@ class Thread(Document): #perguntas
     
     def upvote(self, user_id: str):
         """Add an upvote from a user"""
-        if user_id == self.author.id:
-            return  # Prevent users from upvoting their own posts
         if user_id in self._downvoted_users:
             self._downvoted_users.remove(user_id)
         if user_id in self._upvoted_users:
@@ -64,8 +62,6 @@ class Thread(Document): #perguntas
 
     def downvote(self, user_id: str):
         """Add a downvote from a user"""
-        if user_id == self.author.id:
-            return  # Prevent users from downvoting their own posts
         if user_id in self._upvoted_users:
             self._upvoted_users.remove(user_id)
         if user_id in self._downvoted_users:
@@ -150,8 +146,6 @@ class Post(Document): #respostas
     
     def upvote(self, user_id: str):
         """Add an upvote from a user"""
-        if user_id == self.author.id:
-            return  # Prevent users from upvoting their own posts
         if user_id in self._downvoted_users:
             self._downvoted_users.remove(user_id)
         if user_id in self._upvoted_users:
@@ -162,8 +156,6 @@ class Post(Document): #respostas
 
     def downvote(self, user_id: str):
         """Add a downvote from a user"""
-        if user_id == self.author.id:
-            return  # Prevent users from downvoting their own posts
         if user_id in self._upvoted_users:
             self._upvoted_users.remove(user_id)
         if user_id in self._downvoted_users:
