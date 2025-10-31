@@ -13,6 +13,8 @@ def create_report(data: dict, current_user: str) -> api_response:
     report_type = data.get('report_type', '').strip().lower()
     description = data.get('description', '').strip()
     
+    print("DEBUG request data:", repr(data))
+    
     # Validações
     if content_type not in ['thread', 'post']:
         return error_response('content_type must be "thread" or "post"', 400)
@@ -52,6 +54,15 @@ def create_report(data: dict, current_user: str) -> api_response:
     if existing_report:
         return error_response('You have already reported this content', 400)
     
+    # validação: data pode ser None se o request não enviar JSON válido
+    if not data:
+        return {"message": "Request body must be valid JSON"}, 400
+
+    # use fallback para evitar AttributeError se description for None
+    description = (data.get('description') or '').strip()
+    if not description:
+        return {"message": "Campo 'description' é obrigatório"}, 400
+    
     try:
         report = Report(
             _reporter=ObjectId(current_user),
@@ -89,3 +100,63 @@ def get_report_by_id(report_id: str, current_user: str) -> api_response:
         return error_response('Report not found', 404)
     except Exception as e:
         return error_response('Invalid report ID', 400)
+
+def test_create_report():
+    """Test the creation of a report"""
+    # Supondo que você tenha um usuário de teste com ID válido
+    test_user_id = "60d5ec49f1a3c30b30f1e4b2"
+    
+    # Teste 1: Criar um relatório com sucesso
+    response = create_report({
+        "content_type": "thread",
+        "content_id": "60d5ec49f1a3c30b30f1e4b3",
+        "report_type": "spam",
+        "description": "Este é um teste de relatório"
+    }, test_user_id)
+    assert response['status_code'] == 201, f"Expected status code 201, got {response['status_code']}"
+    
+    # Teste 2: Tentar criar um relatório com um tipo de conteúdo inválido
+    response = create_report({
+        "content_type": "invalid_type",
+        "content_id": "60d5ec49f1a3c30b30f1e4b3",
+        "report_type": "spam",
+        "description": "Este é um teste de relatório"
+    }, test_user_id)
+    assert response['status_code'] == 400, f"Expected status code 400, got {response['status_code']}"
+    
+    # Teste 3: Tentar criar um relatório sem fornecer um ID de conteúdo
+    response = create_report({
+        "content_type": "thread",
+        "content_id": "",
+        "report_type": "spam",
+        "description": "Este é um teste de relatório"
+    }, test_user_id)
+    assert response['status_code'] == 400, f"Expected status code 400, got {response['status_code']}"
+    
+    # Teste 4: Tentar criar um relatório com um tipo de relatório inválido
+    response = create_report({
+        "content_type": "thread",
+        "content_id": "60d5ec49f1a3c30b30f1e4b3",
+        "report_type": "invalid_type",
+        "description": "Este é um teste de relatório"
+    }, test_user_id)
+    assert response['status_code'] == 400, f"Expected status code 400, got {response['status_code']}"
+    
+    # Teste 5: Tentar criar um relatório com uma descrição muito longa
+    long_description = "a" * 501  # 501 caracteres
+    response = create_report({
+        "content_type": "thread",
+        "content_id": "60d5ec49f1a3c30b30f1e4b3",
+        "report_type": "other",
+        "description": long_description
+    }, test_user_id)
+    assert response['status_code'] == 400, f"Expected status code 400, got {response['status_code']}"
+    
+    # Teste 6: Criar outro relatório com sucesso (para verificar se o mesmo usuário pode criar múltiplos relatórios)
+    response = create_report({
+        "content_type": "post",
+        "content_id": "60d5ec49f1a3c30b30f1e4b4",
+        "report_type": "spam",
+        "description": "Este é outro teste de relatório"
+    }, test_user_id)
+    assert response['status_code'] == 201, f"Expected status code 201, got {response['status_code']}"
