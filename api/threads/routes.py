@@ -128,3 +128,65 @@ def unpin_post(post_id):
     """Unpin a post (only thread owner can unpin posts)"""
     current_user = get_jwt_identity()
     return vi.unpin_post_by_id(post_id, current_user)
+
+# THREAD IMAGE endpoints
+
+@threads_bp.route("/threads/<thread_id>/images", methods=["POST"])
+@jwt_required()
+def upload_thread_image(thread_id): 
+    """
+    multipart/form-data with file field "images"
+    """
+    files = request.files.getlist("images")
+    current_user = get_jwt_identity()
+    return vi.upload_thread_images(thread_id, current_user, files)
+
+@threads_bp.route("/threads/<thread_id>/images", methods=["GET"])
+@jwt_required()
+def get_thread_images_list(thread_id):
+    """Get all images uploaded to a specific thread"""
+    current_user = get_jwt_identity()
+    return vi.list_thread_images(thread_id, current_user)
+
+@threads_bp.route("/threads/images/<image_id>", methods=["GET"])
+@jwt_required()
+def get_thread_image(image_id: str):
+    """Get a specific image uploaded to a thread"""
+    current_user = get_jwt_identity()
+    return vi.get_thread_image(image_id, current_user)
+
+@threads_bp.route("/threads/images/<image_id>", methods=["DELETE"])
+@jwt_required()
+def delete_thread_image(image_id: str):
+    """Delete a specific image uploaded to a thread"""
+    current_user = get_jwt_identity()
+    return vi.delete_thread_image(image_id, current_user)
+
+# Users endpoints
+
+@threads_bp.route("/users/<user_id>/avatar", methods=["GET"])
+@jwt_required()
+def get_user_avatar(user_id):
+    """Get avatar uploaded by a specific user"""
+    current_user = get_jwt_identity()
+    if user_id == "me":
+        user_id = current_user
+    return vi.get_user_avatar(user_id, current_user)
+
+@threads_bp.route("/users/me/avatar", methods=["POST"])
+@jwt_required()
+def upload_user_avatar():
+    """Upload or update current user's avatar
+    multipart/form-data with file field "avatar"
+    """
+    files = request.files.getlist("avatar")
+    current_user = get_jwt_identity()
+    return vi.upload_avatar(current_user, files)
+
+@threads_bp.route("/users/me/avatar", methods=["DELETE"])
+@jwt_required()
+def delete_user_avatar():
+    """Delete current user's avatar"""
+    current_user = get_jwt_identity()
+    return vi.delete_avatar(current_user)
+

@@ -1,11 +1,13 @@
-from mongoengine import Document, StringField, BooleanField, DateTimeField, IntField, ReferenceField
+from io import BytesIO
+from mongoengine import Document, StringField, BooleanField, DateTimeField, IntField, ReferenceField, EmailField, ImageField
 from datetime import datetime, timedelta
 from core.utils import bcrypt
 
 class User(Document):
     """User model"""
     _username = StringField(required=True, unique=True)
-    _email = StringField(required=True, unique=True)
+    _avatar_image = ImageField(required=False)
+    _email = EmailField(required=True, unique=True)
     _password = StringField(required=True)
     _created_at = DateTimeField(required=True, default=datetime.now)
     _updated_at = DateTimeField(required=True, default=datetime.now)
@@ -85,6 +87,48 @@ class User(Document):
         self._total_points += amount
         self._updated_at = datetime.now()
         self.save()
+
+    
+    def set_avatar(self, fileobj, filename=None, content_type=None):
+        """
+        fileobj: file-like object (stream) or bytes
+        Stores avatar to GridFS (self._avatar_image is the GridFS proxy)
+        - Replaces the existing avatar file in GridFS if present (deletes old file)
+        - Updates metadata on user
+        Returns dict with 'message' or 'error'
+        """
+        try:
+            # Accept bytes (convert to BytesIO) or file-like
+            if isinstance(fileobj, (bytes, bytearray)):
+                file_stream = BytesIO(fileobj)
+            else:
+                # assume fileobj is file-like and at correct position
+                file_stream = fileobj
+
+            # Optional: delete previous avatar gridfs file to avoid orphaned files
+            if self._avatar_image:
+                self._avatar_image.delete()
+
+            # put the new file; many GridFS proxies accept a file-like object
+            put_result = self._avatar_image.put(
+                file_stream,
+                filename=filename,
+                content_type=content_type,
+            )
+
+            # store reference to avatar file id (adjust field names for your ODM)
+            self._avatar_image_id = put_result if put_result else getattr(self._avatar_image, "id", None)
+            self._updated_at = datetime.now()
+            self.save()
+            return {"message": "Avatar updated successfully"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def get_avatar(self):
+        """Return GridFSProxy or None"""
+        if self._avatar_image:
+            return self._avatar_image
+        return None
 
 class AuthToken(Document):
     """Authentication Token model"""

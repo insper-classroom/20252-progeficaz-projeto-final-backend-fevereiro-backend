@@ -35,3 +35,6 @@ def me():
     """Get current authenticated user's info."""
     current_user = get_jwt_identity()
     return vi.me(current_user)
+
+
+

@@ -1,10 +1,10 @@
-from flask import jsonify
-from flask_jwt_extended import create_access_token
-
+from flask import jsonify, request, send_file, Response
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.authentication.models import User, AuthToken
 from core.types import api_response
-from core.utils import bcrypt, error_response, success_response, send_email
+from core.utils import bcrypt, error_response, success_response, send_email, allowed_filename
 import os
+from werkzeug.utils import secure_filename
 
 def register(data: dict) -> api_response:
     password = data.get("password")
@@ -157,3 +157,5 @@ def me(current_user) -> api_response:
         return success_response(data=user.to_dict())
     except User.DoesNotExist:
         return error_response("Usuario não encontrado", 404)
+
+

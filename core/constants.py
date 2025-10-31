@@ -94,3 +94,7 @@ REPORT_TYPES: list[dict] = [
     {"id": "spam", "name": "Spam", "description": "Conteúdo repetitivo ou não solicitado"},
     {"id": "other", "name": "Outros", "description": "Outro tipo de problema (descreva)"},
 ]
+
+# Allowed extensions for file uploads (e.g., avatars)
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+MAX_AVATAR_BYTES = 5 * 1024 * 1024  # 5 MB
