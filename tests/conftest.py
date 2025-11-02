@@ -4,6 +4,7 @@ import mongoengine as me
 import os
 from dotenv import load_dotenv
 from api.authentication.models import User, AuthToken
+from unittest.mock import patch
 
 # Load environment variables from .env for test configuration
 load_dotenv()
@@ -101,12 +102,12 @@ def other_user_token(client):
     }
     # Register the other user
     client.post('/api/auth/register', json=other_user_data)
-    
+
     # Verify the other user's email
     user = User.objects(_email=other_user_data['email']).first()
     token = AuthToken.objects(_user=user, _token_type="email_verification").first()
     client.post('/api/auth/verify-email', json={"authToken": str(token.id)})
-    
+
     # Login the other user to get their token
     login_data = {
         "email": other_user_data['email'],
@@ -115,3 +116,29 @@ def other_user_token(client):
     response = client.post('/api/auth/login', json=login_data)
     data = response.get_json()
     return data.get('access_token')
+
+@pytest.fixture
+def thread_data():
+    """Fixture for common thread data."""
+    return {
+        "title": "My Test Thread",
+        "description": "This is a detailed description for the test thread.",
+        "semester": 3,
+        "courses": ["cc"],
+        "subjects": ["Programação Eficaz"]
+    }
+
+@pytest.fixture
+def post_data():
+    """Fixture for common post data."""
+    return {
+        "content": "This is the content of a test post."
+    }
+
+@pytest.fixture(autouse=True)
+def mock_send_email():
+    """Mock the send_email function to prevent actual email sending during tests."""
+    with patch('api.authentication.views.send_email') as mock:
+        # Make send_email return success
+        mock.return_value = ({"message": "Email sent successfully"}, 200)
+        yield mock

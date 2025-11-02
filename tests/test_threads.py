@@ -3,25 +3,6 @@ import json
 from api.threads.models import Thread, Post
 from api.authentication.models import User
 
-@pytest.fixture
-def thread_data():
-    """Fixture for common thread data."""
-    return {
-        "title": "My Test Thread",
-        "description": "This is a detailed description for the test thread.",
-        "semester": "2024.1",
-        "courses": ["COMP123", "MAT456"],
-        "subjects": ["Programming", "Algorithms"]
-    }
-
-@pytest.fixture
-def post_data():
-    """Fixture for common post data."""
-    return {
-        "author": "Test Author",
-        "content": "This is the content of a test post."
-    }
-
 def test_create_thread_success(client, registered_user_token, thread_data):
     """Test successful creation of a thread."""
     headers = {'Authorization': f'Bearer {registered_user_token}'}

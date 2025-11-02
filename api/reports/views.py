@@ -67,15 +67,6 @@ def create_report(data: dict, current_user: str) -> api_response:
     if existing_report:
         return error_response("You have already reported this content", 400)
 
-    # validação: data pode ser None se o request não enviar JSON válido
-    if not data:
-        return {"message": "Request body must be valid JSON"}, 400
-
-    # use fallback para evitar AttributeError se description for None
-    description = (data.get("description") or "").strip()
-    if not description:
-        return {"message": "Campo 'description' é obrigatório"}, 400
-
     try:
         report = Report(
             _reporter=ObjectId(current_user),
