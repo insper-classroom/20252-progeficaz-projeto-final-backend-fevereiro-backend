@@ -1,10 +1,11 @@
-from flask import jsonify
+import os
+
 from flask_jwt_extended import create_access_token
 
-from api.authentication.models import User, AuthToken
+from api.authentication.models import AuthToken, User
 from core.types import api_response
-from core.utils import bcrypt, error_response, success_response, send_email
-import os
+from core.utils import bcrypt, error_response, send_email, success_response
+
 
 def register(data: dict) -> api_response:
     password = data.get("password")
@@ -19,13 +20,13 @@ def register(data: dict) -> api_response:
     email_lower = email.lower()
     if not isinstance(email, str):
         return error_response("Email inválido", 422)
-    
+
     elif not (
         email_lower.endswith("@al.insper.edu.br")
         or email_lower.endswith("@insper.edu.br")
     ):
         return error_response("Email deve ser do Insper", 422)
-    
+
     # Extraindo username do email (parte antes do @)
     username = email.split("@")[0]
 
@@ -47,12 +48,17 @@ def register(data: dict) -> api_response:
         to_email=new_user.email,
         subject="Verificação de Email - Progef Metagil",
         template_html="verify_email",
-        context={"verification_link": f"{verify_email_link}/verify?authToken={auth_token.id}"},)
+        context={
+            "verification_link": f"{verify_email_link}/verify-email?token={auth_token.id}"
+        },
+    )
 
     if not result:
         return error_response("Erro ao enviar email de verificação", 500)
 
-    return success_response(message="Usuario registrado, email de verificação enviado!", status_code=201)
+    return success_response(
+        message="Usuario registrado, email de verificação enviado!", status_code=201
+    )
 
 
 def verify_email(data: dict) -> api_response:
@@ -60,7 +66,7 @@ def verify_email(data: dict) -> api_response:
 
     if not auth_token:
         return error_response("Token é obrigatório", 400)
-    
+
     # Verificando token
     try:
         token = AuthToken.objects(id=auth_token).first()
@@ -74,7 +80,7 @@ def verify_email(data: dict) -> api_response:
     # Verificando se o token já foi usado
     if token.is_used():
         return error_response("Token de verificação já utilizado", 400)
-    
+
     # Verificando se o token expirou
     if token.is_expired():
         return error_response("Token de verificação expirado", 400)
@@ -89,6 +95,7 @@ def verify_email(data: dict) -> api_response:
 
     return success_response(message="Email verificado com sucesso!", status_code=200)
 
+
 def resend_verification(data: dict) -> api_response:
     email = data.get("email")
     verify_email_link = os.getenv("FRONT_END_URL", "http://localhost:3000")
@@ -99,14 +106,14 @@ def resend_verification(data: dict) -> api_response:
     user = User.objects(_email=email).first()
     if not user:
         return error_response("Usuario não encontrado", 404)
-    
+
     if user.is_active():
         return error_response("Email já verificado", 400)
 
     token = AuthToken.objects(_user=user).order_by("-_created_at").first()
     if token and token.type != "email_verification":
         token = None
-    
+
     if token and not token.is_used() and not token.is_expired():
         # Se o token existe e não foi usado ou expirado, reutilizamos ele
         auth_token = token
@@ -123,13 +130,18 @@ def resend_verification(data: dict) -> api_response:
         to_email=user.email,
         subject="Verificação de Email - Progef Metagil",
         template_html="verify_email",
-        context={"verification_link": f"{verify_email_link}/verify?authToken={auth_token.id}"},
+        context={
+            "verification_link": f"{verify_email_link}/verify-email?token={auth_token.id}"
+        },
     )
 
     if not result[1] == 200:
         return error_response("Erro ao enviar email de verificação", 500)
 
-    return success_response(message="Email de verificação reenviado com sucesso!", status_code=200)
+    return success_response(
+        message="Email de verificação reenviado com sucesso!", status_code=200
+    )
+
 
 def login(data: dict) -> api_response:
     email = data.get("email")
@@ -143,12 +155,15 @@ def login(data: dict) -> api_response:
     user = User.objects(_email=email).first()
     if not user or not user.check_password(password):
         return error_response("Email ou senha inválidos", 401)
-    
+
     if not user.is_active():
         return error_response("Email não verificado", 403)
 
     auth_token = create_access_token(identity=user.id.__str__())
-    return success_response(data={"access_token": auth_token}, message="Login bem sucedido")
+    return success_response(
+        data={"access_token": auth_token}, message="Login bem sucedido"
+    )
+
 
 def me(current_user) -> api_response:
     """Get current authenticated user's info."""
