@@ -13,7 +13,8 @@ class User(Document):
 
     meta = {
         "collection": "users",
-        "allow_inheritance": True
+        "allow_inheritance": True,
+        "strict": False  # Ignore extra fields in database
     }
     
     @property
