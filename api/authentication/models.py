@@ -10,7 +10,10 @@ class User(Document):
     _created_at = DateTimeField(required=True, default=datetime.now)
     _updated_at = DateTimeField(required=True, default=datetime.now)
     _is_active = BooleanField(required=True, default=False)
+    _pointMonth = IntField()
+    _pointTotal = IntField()
 
+    
     meta = {
         "collection": "users",
         "allow_inheritance": True,
@@ -54,6 +57,20 @@ class User(Document):
 
     def is_active(self) -> bool:
         return self._is_active
+    
+    
+    def addPoints(self, num):
+        self._pointTotal += num
+        self._pointMonth += num
+        self.save()
+    
+    
+    
+    def resetPointsMonth(self):
+        self._pointMonth = 0
+        self.save()
+    
+    
     
 class AuthToken(Document):
     """Authentication Token model"""
