@@ -56,10 +56,15 @@ class Thread(Document): #perguntas
             return  # Prevent users from upvoting their own posts
         if user_id in self._downvoted_users:
             self._downvoted_users.remove(user_id)
+            self._upvoted_users.append(user_id)
+            self._author.addPoints(2)
         if user_id in self._upvoted_users:
             self._upvoted_users.remove(user_id)
+            self._author.addPoints(-1)
         else:
             self._upvoted_users.append(user_id)
+            self._author.addPoints(1)
+
         self.save()
 
     def downvote(self, user_id: str):
@@ -68,10 +73,15 @@ class Thread(Document): #perguntas
             return  # Prevent users from downvoting their own posts
         if user_id in self._upvoted_users:
             self._upvoted_users.remove(user_id)
+            self._downvoted_users.append(user_id)
+            self._author.addPoints(-2)
         if user_id in self._downvoted_users:
             self._downvoted_users.remove(user_id)
+            self._author.addPoints(1)            
         else:
             self._downvoted_users.append(user_id)
+            self._author.addPoints(-1)
+
         self.save()
         return 
     
