@@ -2,6 +2,12 @@
 
 This is a minimal Flask REST API for the forum application. It uses MongoDB as the database.
 
+## 🔗 API Links
+
+- **Production API**: `https://seu-dominio-aqui.com/api`
+- **Local Development**: `http://localhost:5000/api`
+- **API Documentation**: Ver seções de endpoints abaixo
+
 ## Setup
 
 ### Prerequisites
@@ -53,7 +59,10 @@ This is a minimal Flask REST API for the forum application. It uses MongoDB as t
 
 The API will be available at http://localhost:5000/api
 
-## API Endpoints
+## 📚 API Endpoints
+
+**Base URL (Local)**: `http://localhost:5000/api`  
+**Base URL (Production)**: `http://54.221.82.163/api`
 
 ### Search
 - `GET /api/search/threads?q=<query>` - search threads by title
